@@ -15,6 +15,8 @@
 		69E2A3321EB3CC99007308AE /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 69E2A3301EB3CC99007308AE /* LaunchScreen.storyboard */; };
 		69E2A33D1EB3CC99007308AE /* mehTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2A33C1EB3CC99007308AE /* mehTests.swift */; };
 		69E2A3481EB3CC99007308AE /* mehUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2A3471EB3CC99007308AE /* mehUITests.swift */; };
+		69E2A3561EB3D6D9007308AE /* BLE.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2A3551EB3D6D9007308AE /* BLE.swift */; };
+		69E2A3581EB3E04C007308AE /* MessengerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2A3571EB3E04C007308AE /* MessengerModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,6 +51,8 @@
 		69E2A3431EB3CC99007308AE /* mehUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = mehUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		69E2A3471EB3CC99007308AE /* mehUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = mehUITests.swift; sourceTree = "<group>"; };
 		69E2A3491EB3CC99007308AE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		69E2A3551EB3D6D9007308AE /* BLE.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BLE.swift; sourceTree = "<group>"; };
+		69E2A3571EB3E04C007308AE /* MessengerModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = MessengerModel.swift; path = ../MessengerModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -99,8 +103,10 @@
 		69E2A3241EB3CC99007308AE /* meh */ = {
 			isa = PBXGroup;
 			children = (
+				69E2A3571EB3E04C007308AE /* MessengerModel.swift */,
 				69E2A3251EB3CC99007308AE /* AppDelegate.swift */,
 				69E2A3271EB3CC99007308AE /* FirstViewController.swift */,
+				69E2A3551EB3D6D9007308AE /* BLE.swift */,
 				69E2A3291EB3CC99007308AE /* SecondViewController.swift */,
 				69E2A32B1EB3CC99007308AE /* Main.storyboard */,
 				69E2A32E1EB3CC99007308AE /* Assets.xcassets */,
@@ -265,9 +271,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				69E2A3581EB3E04C007308AE /* MessengerModel.swift in Sources */,
 				69E2A32A1EB3CC99007308AE /* SecondViewController.swift in Sources */,
 				69E2A3261EB3CC99007308AE /* AppDelegate.swift in Sources */,
 				69E2A3281EB3CC99007308AE /* FirstViewController.swift in Sources */,
+				69E2A3561EB3D6D9007308AE /* BLE.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -520,6 +528,7 @@
 				69E2A34E1EB3CC99007308AE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		69E2A34F1EB3CC99007308AE /* Build configuration list for PBXNativeTarget "mehTests" */ = {
 			isa = XCConfigurationList;
@@ -528,6 +537,7 @@
 				69E2A3511EB3CC99007308AE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		69E2A3521EB3CC99007308AE /* Build configuration list for PBXNativeTarget "mehUITests" */ = {
 			isa = XCConfigurationList;
@@ -536,6 +546,7 @@
 				69E2A3541EB3CC99007308AE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
