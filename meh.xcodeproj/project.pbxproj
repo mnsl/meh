@@ -17,6 +17,8 @@
 		69E2A3481EB3CC99007308AE /* mehUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2A3471EB3CC99007308AE /* mehUITests.swift */; };
 		C597E6851EB3D69A00E90ECC /* LoginViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C597E6841EB3D69A00E90ECC /* LoginViewController.swift */; };
 		C597E6B31EB3E17200E90ECC /* UserTableViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C597E6B21EB3E17200E90ECC /* UserTableViewCell.swift */; };
+		69E2A3561EB3D6D9007308AE /* BLE.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2A3551EB3D6D9007308AE /* BLE.swift */; };
+		69E2A3581EB3E04C007308AE /* MessengerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2A3571EB3E04C007308AE /* MessengerModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -53,6 +55,8 @@
 		69E2A3491EB3CC99007308AE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		C597E6841EB3D69A00E90ECC /* LoginViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LoginViewController.swift; sourceTree = "<group>"; };
 		C597E6B21EB3E17200E90ECC /* UserTableViewCell.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UserTableViewCell.swift; sourceTree = "<group>"; };
+		69E2A3551EB3D6D9007308AE /* BLE.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BLE.swift; sourceTree = "<group>"; };
+		69E2A3571EB3E04C007308AE /* MessengerModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = MessengerModel.swift; path = ../MessengerModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,8 +107,10 @@
 		69E2A3241EB3CC99007308AE /* meh */ = {
 			isa = PBXGroup;
 			children = (
+				69E2A3571EB3E04C007308AE /* MessengerModel.swift */,
 				69E2A3251EB3CC99007308AE /* AppDelegate.swift */,
 				69E2A3271EB3CC99007308AE /* FirstViewController.swift */,
+				69E2A3551EB3D6D9007308AE /* BLE.swift */,
 				69E2A3291EB3CC99007308AE /* SecondViewController.swift */,
 				C597E6841EB3D69A00E90ECC /* LoginViewController.swift */,
 				C597E6B21EB3E17200E90ECC /* UserTableViewCell.swift */,
@@ -275,7 +281,8 @@
 				69E2A32A1EB3CC99007308AE /* SecondViewController.swift in Sources */,
 				69E2A3261EB3CC99007308AE /* AppDelegate.swift in Sources */,
 				69E2A3281EB3CC99007308AE /* FirstViewController.swift in Sources */,
-				C597E6B31EB3E17200E90ECC /* UserTableViewCell.swift in Sources */,
+				69E2A3581EB3E04C007308AE /* MessengerModel.swift in Sources */,
+				69E2A3561EB3D6D9007308AE /* BLE.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
