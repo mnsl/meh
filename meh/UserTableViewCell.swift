@@ -11,7 +11,7 @@ import UIKit
 class UserTableViewCell: UITableViewCell {
     // MARK: Properties
     
-    @IBOutlet weak var username: UILabel!
+    @IBOutlet weak var usernameLabel: UILabel!
     
     override func awakeFromNib() {
         super.awakeFromNib()
