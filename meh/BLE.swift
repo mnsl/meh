@@ -5,7 +5,7 @@
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  
  
-    Borrowed and modified by J. Maunsell.
+    Borrowed and modified by J. Maunsell to support multiple active peripheral connections.
  */
 
 import Foundation
@@ -64,7 +64,30 @@ private extension CBUUID {
     }
 }
 
-class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
+
+/**
+ 
+ BLE as implemented in Anteater handles central -> peripheral(s) connections,
+ only actively exchanging data with one peripheral at a time.
+ 
+ What we want is a class that also handles peripheral -> central connections,
+ which means adding in the CBPeripheralManagerDelegate protocol.
+ Still OK for nodes to only actively exchange data one at a time.
+ 
+ Both central -> peripheral connections and vice versa have the functionality 
+ we need for message broadcasting, so peers only need to make one kind of connection.
+ We want a generic API that handles the two different protocols behind-the-scenes.
+ 
+ Each node should keep track the nodes it's connected to as a peripheral &
+ the nodes it's connected to as a central.
+ 
+ broadcast(message) {
+    for node in nodes connected as peripherals: update message characteristic of node
+    for node in nodes connected as centrals: send data to node
+ }
+ 
+ */
+class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripheralManagerDelegate {
     
     let RBL_SERVICE_UUID = "713D0000-503E-4C75-BA94-3148F18D941E"
     let RBL_CHAR_TX_UUID = "713D0002-503E-4C75-BA94-3148F18D941E"
@@ -72,17 +95,33 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     
     var delegate: BLEDelegate?
     
+    
+    // Central Manager Delegate stuff
     private      var centralManager:   CBCentralManager!
-    private      var activePeripheral: CBPeripheral?
+    private      var activePeripheral: CBPeripheral?  // TODO: this may not be necessary ???
     private      var characteristics = [String : CBCharacteristic]()
-    private      var data:             NSMutableData?
-    private(set) var peripherals     = [CBPeripheral]()
-    private      var RSSICompletionHandler: ((NSNumber?, Error?) -> ())?
+    private      var data:             NSMutableData? // <- not sure if this should be kept
+    private(set) var connectedPeripherals: [CBPeripheral]?
+    
+    // Peripheral Manager Delegate stuff
+    private      var peripheralManager: CBPeripheralManager!  // to handle connections made as a peripheral
+    private(set) var subscribedCentrals: [CBCentral]?
+    
+    
+    // Map of known direct connections
+    private(set) var connectionMap     = [UUID: [UUID]]()
+    
+    // UUIDs of all nodes connected (whether as central or peripheral)
+    private(set) var directPeers: [UUID]?
+
+    
+    private      var RSSICompletionHandler: ((NSNumber?, Error?) -> ())?  // not sure if need to change RSSI stuff
     
     override init() {
         super.init()
         
         self.centralManager = CBCentralManager(delegate: self, queue: nil)
+        // TODO: initialize peripheralManager
         self.data = NSMutableData()
     }
     
@@ -93,6 +132,10 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     }
     
     // MARK: Public methods
+    
+    
+    // scan for nodes to connect to as a central node
+    // TODO: check that you're not already connected as a peripheral to a node you find
     func startScanning(timeout: Double) -> Bool {
         
         if centralManager.state != .poweredOn {
@@ -113,10 +156,19 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         return true
     }
     
+    // stop scanning for nodes to connect to as a central node
     func stopScanning() {
         centralManager.stopScan()
     }
     
+    // TODO: advertise for nodes to connect to as a central node
+    // something like
+    // func startAdvertising() {
+    //  manager.startAdvertising(...)
+    // }
+    
+    
+    // TODO: announce to peers that new connection exists
     func connectToPeripheral(_ peripheral: CBPeripheral) -> Bool {
         
         if centralManager.state != .poweredOn {
@@ -132,6 +184,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         return true
     }
     
+    // TODO: announce to peers that connection is lost
     func disconnectFromPeripheral(_ peripheral: CBPeripheral) -> Bool {
         
         if centralManager.state != .poweredOn {
@@ -141,21 +194,22 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         }
         
         centralManager.cancelPeripheralConnection(peripheral)
-        
         return true
     }
     
-    func read() {
+    // read data from peripheral you're actively connected to
+    func read(uuid: UUID) {
         
         guard let char = characteristics[RBL_CHAR_TX_UUID] else { return }
-        
+
         activePeripheral?.readValue(for: char)
+        
     }
     
-    func write(data: NSData) {
+    // write data to peripheral you're actively connected to
+    func write(data: NSData, uuid: UUID) {
         
         guard let char = characteristics[RBL_CHAR_RX_UUID] else { return }
-        
         activePeripheral?.writeValue(data as Data, for: char, type: .withoutResponse)
     }
     
@@ -164,8 +218,11 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         guard let char = characteristics[RBL_CHAR_TX_UUID] else { return }
         
         activePeripheral?.setNotifyValue(enable, for: char)
+
+        
     }
     
+    // TODO: idk what we need to do about this lol
     func readRSSI(completion: @escaping (_ RSSI: NSNumber?, _ error: Error?) -> ()) {
         
         RSSICompletionHandler = completion
@@ -180,16 +237,20 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         delegate?.ble(didUpdateState: BLEState(rawValue: central.state.rawValue)!)
     }
     
+    // TODO: code from Anteater, need to fix
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         print("[DEBUG] Find peripheral: \(peripheral.identifier.uuidString) RSSI: \(RSSI)")
+        /**
         
-        let index = peripherals.index { $0.identifier.uuidString == peripheral.identifier.uuidString }
+        let index = peripherals.index { ($0.identifier.uuidString) == (peripheral.identifier.uuidString) }
         
         if let index = index {
             peripherals[index] = peripheral
         } else {
-            peripherals.append(peripheral)
+            // ??
         }
+ 
+         */
         
         delegate?.ble(didDiscoverPeripheral: peripheral)
     }
@@ -202,10 +263,9 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         
         print("[DEBUG] Connected to peripheral \(peripheral.identifier.uuidString)")
         
-        activePeripheral = peripheral
         
-        activePeripheral?.delegate = self
-        activePeripheral?.discoverServices([CBUUID(redBearType: .service)])
+        peripheral.delegate = self
+        peripheral.discoverServices([CBUUID(redBearType: .service)])
         
         delegate?.ble(didConnectToPeripheral: peripheral)
     }
@@ -278,4 +338,16 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         RSSICompletionHandler?(RSSI, error)
         RSSICompletionHandler = nil
     }
+    
+    // TODO: required for PeripheralManagerDelegate protocol
+    func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
+        
+    }
+    
+    func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveWrite requests: [CBATTRequest]) {
+        // CBATTRequest sent by connected central wants to update Inbox characteristic of this peripheral
+        // update map of incomplete messages: something like...
+        // updateMessageData(uuid: peripheral.identifier, data: CBATTRequest.value)
+    }
+
 }

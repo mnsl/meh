@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		6920C7D41EB642C100BB16D0 /* MessengerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6920C7D31EB642C100BB16D0 /* MessengerModel.swift */; };
 		69E2A3261EB3CC99007308AE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2A3251EB3CC99007308AE /* AppDelegate.swift */; };
 		69E2A3281EB3CC99007308AE /* FirstViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2A3271EB3CC99007308AE /* FirstViewController.swift */; };
 		69E2A32A1EB3CC99007308AE /* SecondViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2A3291EB3CC99007308AE /* SecondViewController.swift */; };
@@ -16,7 +17,6 @@
 		69E2A33D1EB3CC99007308AE /* mehTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2A33C1EB3CC99007308AE /* mehTests.swift */; };
 		69E2A3481EB3CC99007308AE /* mehUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2A3471EB3CC99007308AE /* mehUITests.swift */; };
 		69E2A3561EB3D6D9007308AE /* BLE.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2A3551EB3D6D9007308AE /* BLE.swift */; };
-		69E2A3581EB3E04C007308AE /* MessengerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2A3571EB3E04C007308AE /* MessengerModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -37,6 +37,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		6920C7D31EB642C100BB16D0 /* MessengerModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MessengerModel.swift; sourceTree = "<group>"; };
 		69E2A3221EB3CC99007308AE /* meh.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = meh.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		69E2A3251EB3CC99007308AE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		69E2A3271EB3CC99007308AE /* FirstViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstViewController.swift; sourceTree = "<group>"; };
@@ -52,7 +53,6 @@
 		69E2A3471EB3CC99007308AE /* mehUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = mehUITests.swift; sourceTree = "<group>"; };
 		69E2A3491EB3CC99007308AE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		69E2A3551EB3D6D9007308AE /* BLE.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BLE.swift; sourceTree = "<group>"; };
-		69E2A3571EB3E04C007308AE /* MessengerModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = MessengerModel.swift; path = ../MessengerModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,7 +103,6 @@
 		69E2A3241EB3CC99007308AE /* meh */ = {
 			isa = PBXGroup;
 			children = (
-				69E2A3571EB3E04C007308AE /* MessengerModel.swift */,
 				69E2A3251EB3CC99007308AE /* AppDelegate.swift */,
 				69E2A3271EB3CC99007308AE /* FirstViewController.swift */,
 				69E2A3551EB3D6D9007308AE /* BLE.swift */,
@@ -112,6 +111,7 @@
 				69E2A32E1EB3CC99007308AE /* Assets.xcassets */,
 				69E2A3301EB3CC99007308AE /* LaunchScreen.storyboard */,
 				69E2A3331EB3CC99007308AE /* Info.plist */,
+				6920C7D31EB642C100BB16D0 /* MessengerModel.swift */,
 			);
 			path = meh;
 			sourceTree = "<group>";
@@ -271,7 +271,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				69E2A3581EB3E04C007308AE /* MessengerModel.swift in Sources */,
+				6920C7D41EB642C100BB16D0 /* MessengerModel.swift in Sources */,
 				69E2A32A1EB3CC99007308AE /* SecondViewController.swift in Sources */,
 				69E2A3261EB3CC99007308AE /* AppDelegate.swift in Sources */,
 				69E2A3281EB3CC99007308AE /* FirstViewController.swift in Sources */,
