@@ -76,17 +76,65 @@ class MessengerModel : BLEDelegate {
     func sendMessage(message: String, recipientUUID: UUID){
         // TODO: only count the message as sent if we receive an ACK
         // Convert the string to a Message struct
-        let newMessage = Message(content: message, sender: UIDevice.currentDevice.identifierForVendor!, date: Date(), recipient: recipientUUID)
+        
+
+        // if recipientUUID in connectedPeripherals, send directly to that peripheral's inbox.
+        
+        // else stick the message in this node's peripheral's outbox.
+        
+        let message = Message(content: message, sender: UIDevice.current.identifierForVendor!, date: Date(), recipient: recipientUUID)
+        let messageData = messageToJSONData(message: message)
+        
         // Check to see if the recipient is connected a central or peripheral node
         if (ble?.connectedPeripherals[recipientUUID] != nil) {
             // Write to the peripheral's inbox characteristic
-            ble.write(messageToJSONData(newMessage),uuid: recipientUUID)
+            writeToInbox(data: messageData!,uuid: recipientUUID)
         } else if (ble?.subscribedCentrals[recipientUUID] != nil) {
             // Update own characteristic.
-            ble.updateCharacteristic(messageToJSONData(newMessage), uuid: recipientUUID)
+            addMessageToOutbox(messageData: messageData!)
         } else {
             // The UUID is of a recipient that is not currently connected.
+            writeToAllInboxes(data: messageData!)
+            
             print("Invalid recipient UUID; not currently connected.")
+        }
+        
+    }
+    
+    // write data to inbox of a specific peripheral,
+    // probably because they're the recipient of this message
+    // (later, we will also use this to do smarter routing --
+    // only write to inboxes of peripherals who can reach
+    // the recipient
+    func writeToInbox(data: Data, uuid: UUID) {
+        
+        guard let char = ble?.peerInboxes[uuid] else { return }
+        guard let peer = ble?.connectedPeripherals[uuid] else { return }
+        
+        peer.writeValue(data, for: char, type: .withoutResponse)
+    }
+    
+    // write message to the inboxes of all peripherals this
+    // node's central is subscribed to
+    func writeToAllInboxes(data: Data) {
+        // for every peripheral this node's central is subscribed to,
+        // write the message data to their inbox.
+    }
+    
+    /**
+     Add message to outbox if the message has not been added before.
+     */
+    func addMessageToOutbox(messageData: Data) -> Bool {
+        // TODO
+        return true
+    }
+    
+    // overwrite outbox contents
+    func overwriteOutbox(data: Data) {
+        if ble?.peripheralManager.updateValue(data, for: ble?.outbox, onSubscribedCentrals: subscribedCentrals.values.toArray()) {
+            print("successfully updated characteristic")
+        } else {
+            print("[ERROR] could not update own characteristic")
         }
     }
     
@@ -98,6 +146,8 @@ class MessengerModel : BLEDelegate {
             } else {
                 print("started scanning")
             }
+            
+            // TODO: start advertising node's peripheral
         }
     }
     
@@ -159,6 +209,7 @@ class MessengerModel : BLEDelegate {
         return nil // if outbox does not need to be updated
     }
     
+    // if we are 
     func ble(centralDidSubscribe central: UUID) {
         
     }
@@ -179,12 +230,7 @@ class MessengerModel : BLEDelegate {
         return nil
     }
     
-    /**
-     Add message to outbox if the message has not been added before.
-    */
-    func addMessageToOutbox(message: Message) -> Data? {
-        return nil // TODO
-    }
+    
     
     /**
      Remove message from outbox if it was in the outbox.

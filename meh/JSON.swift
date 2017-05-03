@@ -33,7 +33,7 @@ extension JSONSerializable {
             }
         }
         
-        return representation
+        return representation as AnyObject
     }
 }
 
@@ -46,8 +46,8 @@ extension JSONSerializable {
         }
         
         do {
-            let data = try JSONSerialization.dataWithJSONObject(representation, options: [])
-            return String(data: data, encoding: NSUTF8StringEncoding)
+            let data = try JSONSerialization.data(withJSONObject: representation, options: [])
+            return String(data: data, encoding: String.Encoding.utf8)
         } catch {
             return nil
         }

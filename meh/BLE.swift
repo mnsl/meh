@@ -44,8 +44,15 @@ extension CBManagerState: CustomStringConvertible {
     }
 }
 
+public extension LazyMapCollection  {
+    
+    func toArray() -> [Element]{
+        return Array(self)
+    }
+}
+
 protocol BLEDelegate {
-    func ble(didUpdateState state: BLEState) // TODO: have this method handle periph-side stuff too
+    func ble(didUpdateState state: BLEState)
     func ble(didDiscoverPeripheral peripheral: CBPeripheral)
     func ble(didConnectToPeripheral peripheral: CBPeripheral)
     func ble(didDisconnectFromPeripheral peripheral: CBPeripheral)
@@ -95,8 +102,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     private      var centralManager:   CBCentralManager!
     //private      var activePeripheral: CBPeripheral?  // TODO: this may not be necessary ???
     
-    private var peerInboxes = [UUID: CBCharacteristic]()
-    private var peerOutboxes = [UUID: CBCharacteristic]()
+    public var peerInboxes = [UUID: CBCharacteristic]()
+    public var peerOutboxes = [UUID: CBCharacteristic]()
     
     private      var data:             NSMutableData? // <- not sure if this should be kept
     public var connectedPeripherals = [UUID: CBPeripheral]()
@@ -104,8 +111,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     // Peripheral Manager Delegate stuff
     private      var peripheralManager: CBPeripheralManager!  // to handle connections made as a peripheral
     public var subscribedCentrals = [UUID: CBCentral]()
-    public var inbox : CBCharacteristic!
-    public var outbox : CBCharacteristic!
+    public var inbox : CBMutableCharacteristic!
+    public var outbox : CBMutableCharacteristic!
     
     private var peripheralData: [String: AnyObject]?
     var services: [CBMutableService]!
@@ -204,34 +211,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         centralManager.cancelPeripheralConnection(peripheral)
         return true
     }
-    
-    // read data from peripheral you're actively connected to
-    func read(uuid: UUID) {
-        
-        guard let char = peerOutboxes[uuid] else { return }
-        guard let peer = connectedPeripherals[uuid] else { return }
-        
-        peer.readValue(for: char)
-        
-    }
-    
-    // write data to inbox of peripheral you're actively connected to
-    func write(data: NSData, uuid: UUID) {
-        
-        guard let char = peerInboxes[uuid] else { return }
-        guard let peer = connectedPeripherals[uuid] else { return }
 
-        peer.writeValue(data as Data, for: char, type: .withoutResponse)
-    }
-    
-    func updateCharacteristic(data: NSData, uuid: UUID) {
-        if peripheralManager.writeValue(value: data, for: outbox, onSubscribedCentrals centrals: subscribedCentrals){
-            print("successfully updated characteristic")
-        } else {
-            print("[ERROR] could not update own characteristic")
-        }
-    }
-    
+
     // enable notifications for updates to given peripheral(as specified by the UUID)'s outbox characteristic
     func enableNotifications(enable: Bool, uuid: UUID) {
         
@@ -341,6 +322,21 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         enableNotifications(enable: true, uuid: peripheral.identifier)
     }
     
+    func readValue(for characteristic: CBCharacteristic) {
+        // TODO: not sure we need to implement this method (required by the CBPeripheral protocol)
+        // since peers connected as peripherals notify this node's central
+        // automatically when their outbox characteristic changes
+    }
+    
+    
+    /**
+     Automatically triggered when a peer connected as a peripheral notifies this node's central
+     that their outbox characteristic has changed. 
+     Read in the updated outbox characteristic's value (a JSON-formatted Data list of messages)
+     and send this data to the BLEDelegate (MessengerModel) to parse.
+     The MessengerModel will deliver messages whose recipient is this node 
+     and forward the other messages.
+    */
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         
         if error != nil {
