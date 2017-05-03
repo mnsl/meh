@@ -56,14 +56,12 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     @IBAction func sendMessage(_ sender: Any) {
         // Get message from the message input field
         let message = messageInputField.text;
-        
-        
         print("sending \"", message as Any, "\"")
         chatTextField.text = chatTextField.text +
             message!
-        
         // Send message
-        MessengerModel.shared.sendMessage(message: messsage)
+        // TODO: figure out how to get the recipient UUID
+        // MessengerModel.shared.sendMessage(message: message, uuid: recipientUUID)
     }
     
     func messengerModel(_ model: MessengerModel, didSendMessage msg : Message?) {

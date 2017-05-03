@@ -99,11 +99,11 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     private var peerOutboxes = [UUID: CBCharacteristic]()
     
     private      var data:             NSMutableData? // <- not sure if this should be kept
-    private(set) var connectedPeripherals = [UUID: CBPeripheral]()
+    public var connectedPeripherals = [UUID: CBPeripheral]()
     
     // Peripheral Manager Delegate stuff
     private      var peripheralManager: CBPeripheralManager!  // to handle connections made as a peripheral
-    private(set) var subscribedCentrals = [UUID: CBCentral]()
+    public var subscribedCentrals = [UUID: CBCentral]()
     public var inbox : CBCharacteristic!
     public var outbox : CBCharacteristic!
     
@@ -224,7 +224,15 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         peer.writeValue(data as Data, for: char, type: .withoutResponse)
     }
     
-    // enable notifications for updates to active peripheral's outbox characteristic
+    func updateCharacteristic(data: NSData, uuid: UUID) {
+        if peripheralManager.writeValue(value: data, for: outbox, onSubscribedCentrals centrals: subscribedCentrals){
+            print("successfully updated characteristic")
+        } else {
+            print("[ERROR] could not update own characteristic")
+        }
+    }
+    
+    // enable notifications for updates to given peripheral(as specified by the UUID)'s outbox characteristic
     func enableNotifications(enable: Bool, uuid: UUID) {
         
         guard let char = peerOutboxes[uuid] else { return }

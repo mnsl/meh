@@ -25,10 +25,10 @@ extension Notification.Name {
 
 // TODO: is this data structure what we want?
 struct Message {
-    let content : String?
-    let sender : User?
+    let content : String
+    let sender : UUID
     let date: Date
-    let recipient : [String]?
+    let recipient : UUID
 }
 
 
@@ -64,8 +64,21 @@ class MessengerModel : BLEDelegate {
     }
     
     
-    func sendMessage(message: message) {
-        return
+    func sendMessage(message: String, recipientUUID: UUID){
+        // TODO: only count the message as sent if we receive an ACK
+        // Convert the string to a Message struct
+        let newMessage = Message(content: message, sender: UIDevice.currentDevice.identifierForVendor!, date: Date(), recipient: recipientUUID)
+        // Check to see if the recipient is connected a central or peripheral node
+        if (ble?.connectedPeripherals[recipientUUID] != nil) {
+            // Write to the peripheral's inbox characteristic
+            ble.write(messageToJSONData(newMessage),uuid: recipientUUID)
+        } else if (ble?.subscribedCentrals[recipientUUID] != nil) {
+            // Update own characteristic.
+            ble.updateCharacteristic(messageToJSONData(newMessage), uuid: recipientUUID)
+        } else {
+            // The UUID is of a recipient that is not currently connected.
+            print("Invalid recipient UUID; not currently connected.")
+        }
     }
     
     func ble(didUpdateState state: BLEState) {
