@@ -64,6 +64,12 @@ protocol BLEDelegate {
     func ble(centralDidSubscribe central: UUID)
     func ble(centralDidUnsubscribe central: UUID)
     
+    func sendMessage(message: String, recipientUUID: UUID)
+    func writeToInbox(data: Data, uuid: UUID)
+    func addMessageToOutbox(messageData: Data) -> Bool
+    func overwriteOutbox(data: Data)
+
+
 }
 
 

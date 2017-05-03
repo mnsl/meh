@@ -131,7 +131,7 @@ class MessengerModel : BLEDelegate {
     
     // overwrite outbox contents
     func overwriteOutbox(data: Data) {
-        if ble?.peripheralManager.updateValue(data, for: ble?.outbox, onSubscribedCentrals: subscribedCentrals.values.toArray()) {
+        if ble?.peripheralManager.updateValue(data, for: ble?.outbox, onSubscribedCentrals: self.ble?.subscribedCentrals.values.toArray()) {
             print("successfully updated characteristic")
         } else {
             print("[ERROR] could not update own characteristic")
