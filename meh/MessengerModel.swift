@@ -27,25 +27,14 @@ extension Notification.Name {
 struct Message {
     let content : String?
     let sender : User?
-    let date: Date = Date()
+    let date: Date
     let recipient : [String]?
-}
-
-// TODO: not sure if this is necessary
-enum Status : Int {
-    case Unknown = -1
-    case Offline = 0
-    case IndirectlyConnected = 1
-    case DirectlyConnected = 2
 }
 
 
 struct User : Hashable {
     let uuid : UUID
     let name : String
-    let peripheral : CBPeripheral?
-    let status : Status
-    let reachableUsers : [UUID]?
     
     // conform to Hashable protocol
     var hashValue: Int {
@@ -54,7 +43,6 @@ struct User : Hashable {
     static func == (lhs: User, rhs: User) -> Bool {
         return lhs.uuid == rhs.uuid
     }
-    
 }
 
 struct Chat {
@@ -106,7 +94,7 @@ class MessengerModel : BLEDelegate {
     
     func ble(didConnectToPeripheral peripheral: CBPeripheral) {
         print("connecting to peripheral \(peripheral)...")
-        let user = User(uuid: peripheral.identifier, name: peripheral.name!, peripheral: peripheral, status: .DirectlyConnected, reachableUsers: [])
+        let user = User(uuid: peripheral.identifier, name: peripheral.name!)
         MessengerModel.shared.users?[peripheral.identifier] = user
         delegate?.messengerModel(.shared, didAddConnectedUser: user)
         // TODO: send usermap over to new 
@@ -127,6 +115,35 @@ class MessengerModel : BLEDelegate {
         // updateMessageData(uuid: peripheral.identifier, data: data)
 
     }
+    
+    func ble(centralDidReadOutbox central: UUID, outboxContents: Data?) {
+        // Convert the JSON-formatted outbox data into an array of Messages.
+        // For each message that was in the outbox when the central read it,
+        // add the central's UUID to the list of centrals that have read the message.
+        // Once all the subscribed centrals have read a message, 
+        // or if a central that reads the message happens to be the message recipient,
+        // we should remove that message from the outbox.
+    }
+    
+    func ble(didReceiveMessage data: Data?, from: UUID) -> Data? {
+        // Convert the message JSON-formatted data into a Message.
+        // If the recipient UUID matches that of a connected peripheral,
+        // update that peripheral's inbox specifically.
+        // Otherwise, if we have not already added the message to our peripheral's outbox,
+        // add the message to our outbox.
+        let currentOutboxContents = ble?.outbox.value
+        // unpack outbox data into messages, update outbox contents as necessary
+        return nil // if outbox does not need to be updated
+    }
+    
+    func ble(centralDidSubscribe central: UUID) {
+        
+    }
+    
+    func ble(centralDidUnsubscribe central: UUID) {
+        
+    }
+
     
     
 }
