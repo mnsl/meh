@@ -62,7 +62,8 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         chatTextField.text = chatTextField.text +
             message!
         
-        // TODO: call the MessengerModel's send message function
+        // Send message
+        MessengerModel.shared.sendMessage(message: messsage)
     }
     
     func messengerModel(_ model: MessengerModel, didSendMessage msg : Message?) {

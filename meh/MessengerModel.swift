@@ -80,6 +80,10 @@ class MessengerModel : BLEDelegate {
     }
     
     
+    func sendMessage(message: message) {
+        return
+    }
+    
     func ble(didUpdateState state: BLEState) {
         // Start scanning for devices
         if state == BLEState.poweredOn {

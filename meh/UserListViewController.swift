@@ -10,7 +10,7 @@ import Foundation
 import UIKit
 
 // TODO: Set this view controller to be the delegate of some model that keeps track of who is on the network, and who you already know.
-class UserListViewController: UIViewController {
+class UserListViewController: UIViewController, UITableViewDataSource, MessengerModelDelegate, UITableViewDelegate {
     @IBOutlet weak var tableView: UITableView!
     @IBOutlet weak var startchat: UIButton!
     
@@ -29,19 +29,22 @@ class UserListViewController: UIViewController {
     }
     override func viewDidLoad() {
         super.viewDidLoad()
-        tableView.delegate = self as? UITableViewDelegate
-        tableView.dataSource = self as? UITableViewDataSource
+        tableView.delegate = self
+        tableView.dataSource = self
         tableView.allowsMultipleSelection = true
         
         tableView.beginUpdates()
         
         for i in 0...onlineUsers.count {
-            let username = onlineUsers[i]
-            let cell_to_fill = tableView.dequeueReusableCell(withIdentifier: "Username")
-            cell_to_fill?.textLabel?.text = username
+            addUsername(username: onlineUsers[i])
         }
         
         tableView.endUpdates()
+    }
+    
+    func addUsername(username:String) {
+        let cell_to_fill = tableView.dequeueReusableCell(withIdentifier: "Username")
+        cell_to_fill?.textLabel?.text = username
     }
 
     func numberOfSections(in tableView: UITableView) -> Int {
@@ -57,7 +60,6 @@ class UserListViewController: UIViewController {
         
         cell.accessoryType = cell.isSelected ? .checkmark : .none
         //        cell.selectionStyle = .none // to prevent cells from being "highlighted"
-        print("cell for row at!")
         print(onlineUsers[indexPath.row])
         cell.textLabel?.text = onlineUsers[indexPath.row]
         
@@ -75,6 +77,23 @@ class UserListViewController: UIViewController {
         let deselectedUser = tableView.cellForRow(at: indexPath as IndexPath)?.textLabel?.text;
         selectedUsers.remove(deselectedUser!);
     }
+    
+    // MARK: MessengerModelDelegate functions
+    func messengerModel(_ model: MessengerModel, didSendMessage msg : Message?) {
+        return;
+    }
+    
+    func messengerModel(_ model: MessengerModel, didReceiveMessage msg : Message?) {
+        return;
+    }
+    
+    func messengerModel(_ model: MessengerModel, didAddConnectedUser user : User?) {
+        addUsername(username: (user?.name)!)
+    }
+    
+    
+    
+    
     
     
 }
