@@ -83,7 +83,7 @@ class MessengerModel : BLEDelegate {
         } else {
             print("connected to peripheral: \(peripheral)")
             // Add peripheral to list of connected users.
-            MessengerModel.shared.users?[peripheral.identifier] = User(uuid: peripheral.identifier, name: peripheral.name!, peripheral: peripheral, reachableUsers: [])
+            MessengerModel.shared.users?[peripheral.identifier] = User(uuid: peripheral.identifier, name: peripheral.name!)
         }
         
         // TODO: keep scanning??
