@@ -14,7 +14,9 @@ class UserListViewController: UIViewController {
     @IBOutlet weak var tableView: UITableView!
     @IBOutlet weak var startchat: UIButton!
     
-    var onlineUsers = ["keam", "mnsl", "quacht", "mnsl", "quacht", "mnsl", "quacht", "mnsl", "quacht"];
+    // var onlineUsers = MessengerModel.shared.users
+    // TODO(quacht): pull onlineUsers from the messenger model
+    var onlineUsers = ["keam", "mnsl", "quacht"];
     var selectedUsers: Set = Set<String>()
     
     // MARK: - UITableViewDataSource
@@ -27,9 +29,19 @@ class UserListViewController: UIViewController {
     }
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.tableView.delegate = self as? UITableViewDelegate
-        self.tableView.dataSource = self as? UITableViewDataSource
-        self.tableView.allowsMultipleSelection = true
+        tableView.delegate = self as? UITableViewDelegate
+        tableView.dataSource = self as? UITableViewDataSource
+        tableView.allowsMultipleSelection = true
+        
+        tableView.beginUpdates()
+        
+        for i in 0...onlineUsers.count {
+            let username = onlineUsers[i]
+            let cell_to_fill = tableView.dequeueReusableCell(withIdentifier: "Username")
+            cell_to_fill?.textLabel?.text = username
+        }
+        
+        tableView.endUpdates()
     }
 
     func numberOfSections(in tableView: UITableView) -> Int {
@@ -45,6 +57,8 @@ class UserListViewController: UIViewController {
         
         cell.accessoryType = cell.isSelected ? .checkmark : .none
         //        cell.selectionStyle = .none // to prevent cells from being "highlighted"
+        print("cell for row at!")
+        print(onlineUsers[indexPath.row])
         cell.textLabel?.text = onlineUsers[indexPath.row]
         
         return cell

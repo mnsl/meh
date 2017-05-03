@@ -45,11 +45,6 @@ struct User : Hashable {
     }
 }
 
-struct Chat {
-    var messageHistory : [String]?
-    var users : [User]?
-}
-
 
 class MessengerModel : BLEDelegate {
     
@@ -59,7 +54,7 @@ class MessengerModel : BLEDelegate {
     
     var delegate : MessengerModelDelegate?
     
-    var chats : [Chat]?
+    var chats : [User: [Message]]?
     var users : [UUID: User]?
     var ble: BLE?
     
@@ -87,6 +82,8 @@ class MessengerModel : BLEDelegate {
             print("error connecting to peripheral")
         } else {
             print("connected to peripheral: \(peripheral)")
+            // Add peripheral to list of connected users.
+            MessengerModel.shared.users?[peripheral.identifier] = User(uuid: peripheral.identifier, name: peripheral.name!, peripheral: peripheral, reachableUsers: [])
         }
         
         // TODO: keep scanning??

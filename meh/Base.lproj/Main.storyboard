@@ -89,6 +89,7 @@
                                                 </label>
                                             </subviews>
                                         </tableViewCellContentView>
+                                        <accessibility key="accessibilityConfiguration" identifier="Username"/>
                                     </tableViewCell>
                                 </prototypes>
                                 <connections>
@@ -102,6 +103,9 @@
                                 <state key="normal" title="Start Chat!"/>
                                 <connections>
                                     <action selector="startChatButtonClick:" destination="fQv-83-dlP" eventType="touchUpInside" id="wPR-bf-Wso"/>
+                                    <segue destination="2ss-LT-kOs" kind="popoverPresentation" popoverAnchorView="5cI-FN-LkB" id="QY0-5F-ZJu">
+                                        <popoverArrowDirection key="popoverArrowDirection" up="YES" down="YES" left="YES" right="YES"/>
+                                    </segue>
                                 </connections>
                             </button>
                         </subviews>
@@ -116,10 +120,10 @@
             </objects>
             <point key="canvasLocation" x="138.75" y="157.3943661971831"/>
         </scene>
-        <!--View Controller-->
+        <!--Chat View Controller-->
         <scene sceneID="A7P-qL-Stg">
             <objects>
-                <viewController id="2ss-LT-kOs" sceneMemberID="viewController">
+                <viewController id="2ss-LT-kOs" customClass="ChatViewController" customModule="meh" customModuleProvider="target" sceneMemberID="viewController">
                     <layoutGuides>
                         <viewControllerLayoutGuide type="top" id="Fdc-2J-U9H"/>
                         <viewControllerLayoutGuide type="bottom" id="rMS-Iq-sxy"/>
@@ -135,9 +139,42 @@
                                     <navigationItem title="Chat Members" id="STY-LA-s12"/>
                                 </items>
                             </navigationBar>
+                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" showsHorizontalScrollIndicator="NO" editable="NO" text="Your chats will be visible here" translatesAutoresizingMaskIntoConstraints="NO" id="sdt-Y6-BGv">
+                                <rect key="frame" x="16" y="78" width="288" height="391"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
+                            </textView>
+                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" usesAttributedText="YES" translatesAutoresizingMaskIntoConstraints="NO" id="AHb-Qu-gGW">
+                                <rect key="frame" x="16" y="477" width="232" height="71"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                <attributedString key="attributedText">
+                                    <fragment content="Your Message here">
+                                        <attributes>
+                                            <font key="NSFont" metaFont="system" size="14"/>
+                                            <paragraphStyle key="NSParagraphStyle" alignment="natural" lineBreakMode="wordWrapping" baseWritingDirection="natural" tighteningFactorForTruncation="0.0"/>
+                                        </attributes>
+                                    </fragment>
+                                </attributedString>
+                                <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
+                            </textView>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="fCR-kF-dpZ">
+                                <rect key="frame" x="261" y="510" width="40" height="17"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Send "/>
+                                <connections>
+                                    <action selector="sendMessage:" destination="2ss-LT-kOs" eventType="touchUpInside" id="o6k-Cn-cJo"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                     </view>
+                    <connections>
+                        <outlet property="chatTextField" destination="sdt-Y6-BGv" id="RYv-e3-KVc"/>
+                        <outlet property="messageInputField" destination="AHb-Qu-gGW" id="sPS-CX-aS4"/>
+                        <outlet property="sendButton" destination="fCR-kF-dpZ" id="elY-5H-mcx"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Wd1-5I-Wzg" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>

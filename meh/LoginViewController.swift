@@ -62,8 +62,12 @@ class LoginViewController: UIViewController {
     }
     
     func joinMeshNetwork() {
-        print("TODO: init")
-        print("joining mesh network, by scanning for others in network and connecting with them.This should update both end users lists of available users to contact")
+        print("attemping to scanning for others in network")
+        if (MessengerModel.shared.ble?.startScanning(timeout: MessengerModel.kBLE_SCAN_TIMEOUT))! {
+            print("started scanning for node through which to join network")
+        } else {
+            print("unable to start scanning")
+        }
     }
 
 
