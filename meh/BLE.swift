@@ -52,9 +52,10 @@ protocol BLEDelegate {
     func ble(_ peripheral: CBPeripheral, didReceiveData data: Data?)
     
     // TODO: add methods that handle peripheral-side stuff
-    // func ble(didUpdateCharacteristic ...)
-    // func ble(didConnectToCentral ...)
-    // func ble(didDisconnectFromCentral ...)
+    func ble(centralDidReadOutbox central: UUID, outboxContents: Data?)
+    func ble(didReceiveMessage data: Data?, from: UUID) -> Data?
+    func ble(centralDidSubscribe central: UUID)
+    func ble(centralDidUnsubscribe central: UUID)
     
 }
 
@@ -103,8 +104,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     // Peripheral Manager Delegate stuff
     private      var peripheralManager: CBPeripheralManager!  // to handle connections made as a peripheral
     private(set) var subscribedCentrals = [UUID: CBCentral]()
-    private var inbox : CBCharacteristic?
-    private var outbox : CBCharacteristic?
+    public var inbox : CBCharacteristic!
+    public var outbox : CBCharacteristic!
     
     private var peripheralData: [String: AnyObject]?
     var services: [CBMutableService]!
@@ -126,6 +127,9 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         self.centralManager = CBCentralManager(delegate: self, queue: nil)
         self.peripheralManager = CBPeripheralManager(delegate: self, queue: nil)
         self.data = NSMutableData()
+        self.inbox = CBMutableCharacteristic(type: CBUUID(string: CHAR_INBOX_UUID), properties: CBCharacteristicProperties.write, value: nil, permissions: CBAttributePermissions.writeable)
+        self.outbox = CBMutableCharacteristic(type: CBUUID(string: CHAR_OUTBOX_UUID), properties: CBCharacteristicProperties.read, value: nil, permissions: CBAttributePermissions.readable)
+        setupService() // <- is this the right place?
         
     }
     
@@ -362,7 +366,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         based on sample code in http://stackoverflow.com/questions/39679737/cbperipheral-service-seems-to-be-invisible
     */
     func setupService() {
-        let serviceUUID = CBUUID(string: SERVICE_UUID) // idk this was in some sample code
+        let serviceUUID = CBUUID(string: SERVICE_UUID)
         
         let inboxCharacteristic = CBMutableCharacteristic(type: CBUUID(string: CHAR_INBOX_UUID),
                                                      properties: .write, // inbox writable by peers
@@ -415,7 +419,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
 
                 // TODO: add message in request.value to list of received messages for MessengerModel to handle
                 //       give delegate (MessengerModel) the data in request.value
-                // TODO: need to add method like didReceiveMessageData(data: Data, from: UUID) to BLEDelegate protocol implemented by MessengerModel
+                delegate?.ble(didReceiveMessage: request.value, from: request.central.identifier)
                 peripheralManager.respond(to: request, withResult: CBATTError.Code.success) // respond to the write request positively
             } else {
                 peripheralManager.respond(to: request, withResult: CBATTError.Code.writeNotPermitted)
@@ -429,6 +433,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
             // central wants to read from this peripheral's outbox
             peripheralManager.respond(to: request, withResult: CBATTError.Code.success)
             // TODO: for each message in outbox, add central to list of centrals that have read that message
+            delegate?.ble(centralDidReadOutbox: request.central.identifier, outboxContents: outbox.value)
         } else {
             peripheralManager.respond(to: request, withResult: CBATTError.Code.readNotPermitted)
         }
