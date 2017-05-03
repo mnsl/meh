@@ -403,11 +403,30 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveWrite requests: [CBATTRequest]) {
         // CBATTRequest sent by connected central wants to update Inbox characteristic of this peripheral
         // so call peripheralManager.respond(to:withResult:) to respond to the write request
+        
+        for request in requests {
+            if request.characteristic.uuid.uuidString == CHAR_INBOX_UUID {
+                // CBATTRequest sent by connected central wants to update Inbox characteristic of this peripheral
+
+                // TODO: add message in request.value to list of received messages for MessengerModel to handle
+                //       give delegate (MessengerModel) the data in request.value
+                // TODO: need to add method like didReceiveMessageData(data: Data, from: UUID) to BLEDelegate protocol implemented by MessengerModel
+                peripheralManager.respond(to: request, withResult: CBATTError.Code.success) // respond to the write request positively
+            } else {
+                peripheralManager.respond(to: request, withResult: CBATTError.Code.writeNotPermitted)
+            }
+        }
+        
     }
     
     func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveRead request: CBATTRequest) {
-        // central wants to read from this peripheral's outbox, 
-        // so call peripheralManager.respond(to:withResult:) to respond to the read request
+        if request.characteristic.uuid.uuidString == CHAR_OUTBOX_UUID {
+            // central wants to read from this peripheral's outbox
+            peripheralManager.respond(to: request, withResult: CBATTError.Code.success)
+            // TODO: for each message in outbox, add central to list of centrals that have read that message
+        } else {
+            peripheralManager.respond(to: request, withResult: CBATTError.Code.writeNotPermitted)
+        }
     }
 
 }
