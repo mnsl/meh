@@ -251,6 +251,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         print("[DEBUG] Find peripheral: \(peripheral.identifier.uuidString) RSSI: \(RSSI)")
         
+        // TODO: check if peripheral UUID matches UUID in subscribedCentrals,
+        // since each peer only needs to be subscribed as a central -or- connected as a peripheral
         delegate?.ble(didDiscoverPeripheral: peripheral)
     }
     
@@ -385,6 +387,9 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         // if characteristic is outbox, add new subscriber to list of central nodes
         // who are reading our outbox, subscribedCentrals
         
+        // TODO: check if central UUID matches UUID in connectedPeripherals,
+        // since each peer only needs to be subscribed as a central -or- connected as a peripheral
+        
     }
     
     func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didUnsubscribeFrom characteristic: CBCharacteristic) {
@@ -425,7 +430,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
             peripheralManager.respond(to: request, withResult: CBATTError.Code.success)
             // TODO: for each message in outbox, add central to list of centrals that have read that message
         } else {
-            peripheralManager.respond(to: request, withResult: CBATTError.Code.writeNotPermitted)
+            peripheralManager.respond(to: request, withResult: CBATTError.Code.readNotPermitted)
         }
     }
 
