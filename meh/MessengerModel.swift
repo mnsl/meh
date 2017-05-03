@@ -44,7 +44,6 @@ struct User : Hashable {
     let uuid : UUID
     let name : String
     let peripheral : CBPeripheral?
-    let status : Status
     let reachableUsers : [UUID]?
     
     // conform to Hashable protocol
@@ -99,6 +98,8 @@ class MessengerModel : BLEDelegate {
             print("error connecting to peripheral")
         } else {
             print("connected to peripheral: \(peripheral)")
+            // Add peripheral to list of connected users.
+            MessengerModel.shared.users?[peripheral.identifier] = User(uuid: peripheral.identifier, name: peripheral.name!, peripheral: peripheral, reachableUsers: [])
         }
         
         // TODO: keep scanning??
@@ -106,7 +107,7 @@ class MessengerModel : BLEDelegate {
     
     func ble(didConnectToPeripheral peripheral: CBPeripheral) {
         print("connecting to peripheral \(peripheral)...")
-        let user = User(uuid: peripheral.identifier, name: peripheral.name!, peripheral: peripheral, status: .DirectlyConnected, reachableUsers: [])
+        let user = User(uuid: peripheral.identifier, name: peripheral.name!, peripheral: peripheral, reachableUsers: [])
         MessengerModel.shared.users?[peripheral.identifier] = user
         delegate?.messengerModel(.shared, didAddConnectedUser: user)
         // TODO: send usermap over to new 
