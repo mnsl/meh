@@ -24,11 +24,20 @@ extension Notification.Name {
 }
 
 // TODO: is this data structure what we want?
-struct Message {
-    let content : String?
-    let sender : User?
+struct Message : JSONSerializable, Hashable {
+    let content : String
+    let sender : UUID
     let date: Date
-    let recipient : [String]?
+    let recipient : UUID
+    
+    // conform to Hashable protocol
+    var hashValue: Int {
+        return content.hashValue*2 + sender.hashValue*3 + date.hashValue*5 + recipient.hashValue*7
+    }
+    static func == (lhs: Message, rhs: Message) -> Bool {
+        return lhs.content == rhs.content && lhs.sender == rhs.sender && lhs.recipient == rhs.recipient && lhs.date == rhs.date
+    }
+
 }
 
 
@@ -140,7 +149,57 @@ class MessengerModel : BLEDelegate {
     func ble(centralDidUnsubscribe central: UUID) {
         
     }
+    
+    /**
+     Converts a Message to JSON-formatted Data to be loaded into a CBCharacteristic's "value" attribute.
+     If the Message can't be converted, returns nil.
+    */
+    func messageToJSONData(message: Message) -> Data? {
+        if let json = message.toJSON() {
+            print("message \(message) -> JSON \(json)")
+            return json.data(using: .utf8)
+        }
+        return nil
+    }
+    
+    /**
+     Add message to outbox if the message has not been added before.
+    */
+    func addMessageToOutbox(message: Message) -> Data? {
+        return nil // TODO
+    }
+    
+    /**
+     Remove message from outbox if it was in the outbox.
+     Returns true if the message was in the outbox, else false.
+    */
+    func removeMessageFromOutbox(message: Message) -> Bool {
+        return true // TODO
+    }
+    
+    
+    
+    /**
+     Converts JSON-formatted Data into the corresponding Message.
+    */
+    func jsonDataToMessage(data: Data) -> Message? {
+        let json = try? JSONSerialization.jsonObject(with: data, options: [])
+        if let dict = json as? [String: String] {
+            let content = dict["content"]
+            let sender = UUID(uuidString: dict["sender"]!)
+            let recipient = UUID(uuidString: dict["recipient"]!)
+            let dateFormatter = DateFormatter()
+            let date = dateFormatter.date(from: dict["date"]!)
+            
+            return Message(content: content!, sender: sender!, date: date!, recipient: recipient!)
+        }
+   
+        return nil
+    }
 
-    
-    
+    func jsonDataToOutbox(data: Data) -> [Message]? {
+        let json = try? JSONSerialization.jsonObject(with: data, options: [])
+        return nil // TODO: implement
+    }
+
 }
