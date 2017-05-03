@@ -14,6 +14,9 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     @IBOutlet weak var chatTextField: UITextView!
     @IBOutlet weak var messageInputField: UITextView!
     @IBOutlet weak var sendButton: UIButton!
+    
+    // TODO(quacht): Preliminary character limit... will update after testing what is the maximum you can write to a characteristic.
+    let message_character_limit = 10000;
    
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -44,7 +47,8 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         
     }
     func messageToString(message: Message) -> String {
-        return message.sender!.name + ": " + message.content! + "\n" as String
+        let username = MessengerModel.shared.users[message.sender]
+        return username + ": " + message.content! + "\n" as String
     }
     
     
