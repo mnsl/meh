@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		6905D98B1EB9BF4F00CC8C5B /* JSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6905D98A1EB9BF4F00CC8C5B /* JSON.swift */; };
 		69E2A3261EB3CC99007308AE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2A3251EB3CC99007308AE /* AppDelegate.swift */; };
 		69E2A32D1EB3CC99007308AE /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 69E2A32B1EB3CC99007308AE /* Main.storyboard */; };
 		69E2A32F1EB3CC99007308AE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 69E2A32E1EB3CC99007308AE /* Assets.xcassets */; };
@@ -41,6 +42,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		6905D98A1EB9BF4F00CC8C5B /* JSON.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = JSON.swift; sourceTree = "<group>"; };
 		6920C7D31EB642C100BB16D0 /* MessengerModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MessengerModel.swift; sourceTree = "<group>"; };
 		69E2A3221EB3CC99007308AE /* meh.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = meh.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		69E2A3251EB3CC99007308AE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -113,6 +115,7 @@
 			isa = PBXGroup;
 			children = (
 				C53AAB871EB64C8F0086B876 /* MessengerModel.swift */,
+				6905D98A1EB9BF4F00CC8C5B /* JSON.swift */,
 				C53AAB831EB645960086B876 /* LoginViewController.swift */,
 				69E2A3251EB3CC99007308AE /* AppDelegate.swift */,
 				69E2A3551EB3D6D9007308AE /* BLE.swift */,
@@ -286,6 +289,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C53AAB841EB645960086B876 /* LoginViewController.swift in Sources */,
+				6905D98B1EB9BF4F00CC8C5B /* JSON.swift in Sources */,
 				C53AAB8F1EB6A6AC0086B876 /* UserListViewController.swift in Sources */,
 				C53AAB881EB64C8F0086B876 /* MessengerModel.swift in Sources */,
 				C53AAB8D1EB65AE00086B876 /* UserTableViewCell.swift in Sources */,
