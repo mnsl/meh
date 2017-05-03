@@ -5,7 +5,7 @@
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  
  
-    Borrowed and modified by J. Maunsell to support multiple active peripheral connections.
+    Borrowed and modified by 6.S062 ME$H group to support multiple active peripheral connections.
  */
 
 import Foundation
@@ -45,24 +45,17 @@ extension CBManagerState: CustomStringConvertible {
 }
 
 protocol BLEDelegate {
-    func ble(didUpdateState state: BLEState)
+    func ble(didUpdateState state: BLEState) // TODO: have this method handle periph-side stuff too
     func ble(didDiscoverPeripheral peripheral: CBPeripheral)
     func ble(didConnectToPeripheral peripheral: CBPeripheral)
     func ble(didDisconnectFromPeripheral peripheral: CBPeripheral)
     func ble(_ peripheral: CBPeripheral, didReceiveData data: Data?)
     
-}
-
-private extension CBUUID {
-    enum RedBearUUID: String {
-        case service = "713D0000-503E-4C75-BA94-3148F18D941E"
-        case charTx = "713D0002-503E-4C75-BA94-3148F18D941E"
-        case charRx = "713D0003-503E-4C75-BA94-3148F18D941E"
-    }
+    // TODO: add methods that handle peripheral-side stuff
+    // func ble(didUpdateCharacteristic ...)
+    // func ble(didConnectToCentral ...)
+    // func ble(didDisconnectFromCentral ...)
     
-    convenience init(redBearType: RedBearUUID) {
-        self.init(string:redBearType.rawValue)
-    }
 }
 
 
@@ -90,23 +83,31 @@ private extension CBUUID {
  */
 class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripheralManagerDelegate {
     
-    let RBL_SERVICE_UUID = "713D0000-503E-4C75-BA94-3148F18D941E"
-    let RBL_CHAR_TX_UUID = "713D0002-503E-4C75-BA94-3148F18D941E"
-    let RBL_CHAR_RX_UUID = "713D0003-503E-4C75-BA94-3148F18D941E"
+    let SERVICE_UUID = "713D0000-503E-4C75-BA94-3148F18D941E"
+    let CHAR_INBOX_UUID = "713D0002-503E-4C75-BA94-3148F18D941E"
+    let CHAR_OUTBOX_UUID = "713D0003-503E-4C75-BA94-3148F18D941E"
     
     var delegate: BLEDelegate?
     
     
     // Central Manager Delegate stuff
     private      var centralManager:   CBCentralManager!
-    private      var activePeripheral: CBPeripheral?  // TODO: this may not be necessary ???
-    private      var characteristics = [String : CBCharacteristic]()
+    //private      var activePeripheral: CBPeripheral?  // TODO: this may not be necessary ???
+    
+    private var peerInboxes = [UUID: CBCharacteristic]()
+    private var peerOutboxes = [UUID: CBCharacteristic]()
+    
     private      var data:             NSMutableData? // <- not sure if this should be kept
-    private(set) var connectedPeripherals: [CBPeripheral]?
+    private(set) var connectedPeripherals = [UUID: CBPeripheral]()
     
     // Peripheral Manager Delegate stuff
     private      var peripheralManager: CBPeripheralManager!  // to handle connections made as a peripheral
-    private(set) var subscribedCentrals: [CBCentral]?
+    private(set) var subscribedCentrals = [UUID: CBCentral]()
+    private var inbox : CBCharacteristic?
+    private var outbox : CBCharacteristic?
+    
+    private var peripheralData: [String: AnyObject]?
+    var services: [CBMutableService]!
     
     
     // Map of known direct connections
@@ -121,9 +122,11 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     override init() {
         super.init()
         
+        // TODO: do the two managers each need separate dispatch queues??
         self.centralManager = CBCentralManager(delegate: self, queue: nil)
-        // TODO: initialize peripheralManager
+        self.peripheralManager = CBPeripheralManager(delegate: self, queue: nil)
         self.data = NSMutableData()
+        
     }
     
     @objc private func scanTimeout() {
@@ -140,7 +143,6 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     func startScanning(timeout: Double) -> Bool {
         
         if centralManager.state != .poweredOn {
-            
             print("[ERROR] Couldn´t start scanning")
             return false
         }
@@ -151,7 +153,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         Timer.scheduledTimer(timeInterval: timeout, target: self, selector: #selector(BLE.scanTimeout), userInfo: nil, repeats: false)
         
-        let services:[CBUUID] = [CBUUID(redBearType: .service)]
+        let services:[CBUUID] = [CBUUID(string: SERVICE_UUID)]
         centralManager.scanForPeripherals(withServices: services, options: nil)
         
         return true
@@ -167,13 +169,12 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     // func startAdvertising() {
     //  manager.startAdvertising(...)
     // }
-    
+
     
     // TODO: announce to peers that new connection exists
     func connectToPeripheral(_ peripheral: CBPeripheral) -> Bool {
         
         if centralManager.state != .poweredOn {
-            
             print("[ERROR] Couldn´t connect to peripheral")
             return false
         }
@@ -181,6 +182,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         print("[DEBUG] Connecting to peripheral: \(peripheral.identifier.uuidString)")
         
         centralManager.connect(peripheral, options: [CBConnectPeripheralOptionNotifyOnDisconnectionKey : NSNumber(value: true)])
+        
+        // TODO: add peripheral to map connectedPeripherals
         
         return true
     }
@@ -201,33 +204,39 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     // read data from peripheral you're actively connected to
     func read(uuid: UUID) {
         
-        guard let char = characteristics[RBL_CHAR_TX_UUID] else { return }
-
-        activePeripheral?.readValue(for: char)
+        guard let char = peerOutboxes[uuid] else { return }
+        guard let peer = connectedPeripherals[uuid] else { return }
+        
+        peer.readValue(for: char)
         
     }
     
-    // write data to peripheral you're actively connected to
+    // write data to inbox of peripheral you're actively connected to
     func write(data: NSData, uuid: UUID) {
         
-        guard let char = characteristics[RBL_CHAR_RX_UUID] else { return }
-        activePeripheral?.writeValue(data as Data, for: char, type: .withoutResponse)
+        guard let char = peerInboxes[uuid] else { return }
+        guard let peer = connectedPeripherals[uuid] else { return }
+
+        peer.writeValue(data as Data, for: char, type: .withoutResponse)
     }
     
-    func enableNotifications(enable: Bool) {
+    // enable notifications for updates to active peripheral's outbox characteristic
+    func enableNotifications(enable: Bool, uuid: UUID) {
         
-        guard let char = characteristics[RBL_CHAR_TX_UUID] else { return }
+        guard let char = peerOutboxes[uuid] else { return }
+        guard let peer = connectedPeripherals[uuid] else { return }
         
-        activePeripheral?.setNotifyValue(enable, for: char)
-
+        peer.setNotifyValue(enable, for: char)
         
     }
     
     // TODO: idk what we need to do about this lol
-    func readRSSI(completion: @escaping (_ RSSI: NSNumber?, _ error: Error?) -> ()) {
+    func readRSSI(uuid: UUID, completion: @escaping (_ RSSI: NSNumber?, _ error: Error?) -> ()) {
         
         RSSICompletionHandler = completion
-        activePeripheral?.readRSSI()
+     
+        guard let peer = connectedPeripherals[uuid] else { return }
+        peer.readRSSI()
     }
     
     // MARK: CBCentralManager delegate
@@ -241,17 +250,6 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     // TODO: code from Anteater, need to fix
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         print("[DEBUG] Find peripheral: \(peripheral.identifier.uuidString) RSSI: \(RSSI)")
-        /**
-        
-        let index = peripherals.index { ($0.identifier.uuidString) == (peripheral.identifier.uuidString) }
-        
-        if let index = index {
-            peripherals[index] = peripheral
-        } else {
-            // ??
-        }
- 
-         */
         
         delegate?.ble(didDiscoverPeripheral: peripheral)
     }
@@ -266,7 +264,9 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         
         peripheral.delegate = self
-        peripheral.discoverServices([CBUUID(redBearType: .service)])
+        peripheral.discoverServices([CBUUID(string: SERVICE_UUID)])
+        
+        connectedPeripherals[peripheral.identifier] = peripheral
         
         delegate?.ble(didConnectToPeripheral: peripheral)
     }
@@ -280,11 +280,11 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         }
         
         print(text)
-        
+        /** TODO: replace this code with something that makes more sense
         activePeripheral?.delegate = nil
         activePeripheral = nil
         characteristics.removeAll(keepingCapacity: false)
-        
+        */
         delegate?.ble(didDisconnectFromPeripheral: peripheral)
     }
     
@@ -300,7 +300,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         
         for service in peripheral.services! {
-            let theCharacteristics = [CBUUID(redBearType: .charRx), CBUUID(redBearType: .charTx)]
+            let theCharacteristics = [CBUUID(string: CHAR_INBOX_UUID), CBUUID(string: CHAR_OUTBOX_UUID)]
             
             peripheral.discoverCharacteristics(theCharacteristics, for: service)
         }
@@ -316,10 +316,15 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         print("[DEBUG] Found characteristics for peripheral: \(peripheral.identifier.uuidString)")
         
         for characteristic in service.characteristics! {
-            characteristics[characteristic.uuid.uuidString] = characteristic
+            let charUUID = characteristic.uuid.uuidString
+            if charUUID == CHAR_INBOX_UUID {
+                peerInboxes[peripheral.identifier] = characteristic
+            } else if charUUID == CHAR_OUTBOX_UUID {
+                peerOutboxes[peripheral.identifier] = characteristic
+            }
         }
         
-        enableNotifications(enable: true)
+        enableNotifications(enable: true, uuid: peripheral.identifier)
     }
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
@@ -330,7 +335,9 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
             return
         }
         
-        if characteristic.uuid.uuidString == RBL_CHAR_TX_UUID {
+        // if we've just read from the peripheral's outbox, 
+        // then let the MessengerModel know
+        if characteristic.uuid.uuidString == CHAR_OUTBOX_UUID {
             delegate?.ble(peripheral, didReceiveData: characteristic.value as Data?)
         }
     }
@@ -342,13 +349,84 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     
     // TODO: required for PeripheralManagerDelegate protocol
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
+        if peripheral.state == .poweredOn {
+            peripheralManager.startAdvertising(peripheralData) // for now, peripheralData is empty (in future, maybe should be a list of reachable peers)
+        } else if peripheral.state == .poweredOff {
+            peripheralManager.stopAdvertising()
+        }
+    }
+    
+    /**
+        based on sample code in http://stackoverflow.com/questions/39679737/cbperipheral-service-seems-to-be-invisible
+    */
+    func setupService() {
+        let serviceUUID = CBUUID(string: SERVICE_UUID) // idk this was in some sample code
+        
+        let inboxCharacteristic = CBMutableCharacteristic(type: CBUUID(string: CHAR_INBOX_UUID),
+                                                     properties: .write, // inbox writable by peers
+                                                     value: "".data(using: .utf8),
+                                                     permissions: .readable)
+        
+        let outboxCharacteristic = CBMutableCharacteristic(type: CBUUID(string: CHAR_OUTBOX_UUID),
+                                                          properties: .read, // outbox readable by peers
+                                                          value: "".data(using: .utf8),
+                                                          permissions: .readable)
+        
+        
+        let service = CBMutableService(type: serviceUUID, primary: true)
+        service.characteristics = [inboxCharacteristic, outboxCharacteristic]
+        
+        peripheralManager.add(service)
+        peripheralManager.startAdvertising([CBAdvertisementDataServiceUUIDsKey: [service.uuid]])
+        
+    }
+    
+    func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didSubscribeTo characteristic: CBCharacteristic) {
+        // if characteristic is outbox, add new subscriber to list of central nodes
+        // who are reading our outbox, subscribedCentrals
+        
+    }
+    
+    func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didUnsubscribeFrom characteristic: CBCharacteristic) {
+        // if characteristic is outbox,
+        // remove central from subscribedCentrals
+        // (and announce connection lost??)
+    }
+    
+    func peripheralManagerIsReady(toUpdateSubscribers peripheral: CBPeripheralManager) {
+        // if the queue was too full for updateValue previously,
+        // we should have saved the message we wanted to add to the queue somewhere.
+        // now that the queue has space, we should resend the message
         
     }
     
     func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveWrite requests: [CBATTRequest]) {
         // CBATTRequest sent by connected central wants to update Inbox characteristic of this peripheral
-        // update map of incomplete messages: something like...
-        // updateMessageData(uuid: peripheral.identifier, data: CBATTRequest.value)
+        // so call peripheralManager.respond(to:withResult:) to respond to the write request
+        
+        for request in requests {
+            if request.characteristic.uuid.uuidString == CHAR_INBOX_UUID {
+                // CBATTRequest sent by connected central wants to update Inbox characteristic of this peripheral
+
+                // TODO: add message in request.value to list of received messages for MessengerModel to handle
+                //       give delegate (MessengerModel) the data in request.value
+                // TODO: need to add method like didReceiveMessageData(data: Data, from: UUID) to BLEDelegate protocol implemented by MessengerModel
+                peripheralManager.respond(to: request, withResult: CBATTError.Code.success) // respond to the write request positively
+            } else {
+                peripheralManager.respond(to: request, withResult: CBATTError.Code.writeNotPermitted)
+            }
+        }
+        
+    }
+    
+    func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveRead request: CBATTRequest) {
+        if request.characteristic.uuid.uuidString == CHAR_OUTBOX_UUID {
+            // central wants to read from this peripheral's outbox
+            peripheralManager.respond(to: request, withResult: CBATTError.Code.success)
+            // TODO: for each message in outbox, add central to list of centrals that have read that message
+        } else {
+            peripheralManager.respond(to: request, withResult: CBATTError.Code.writeNotPermitted)
+        }
     }
 
 }

@@ -14,14 +14,16 @@ protocol MessengerModelDelegate {
     func messengerModel(_ model: MessengerModel, didSendMessage msg : Message?)
     func messengerModel(_ model: MessengerModel, didReceiveMessage msg : Message?)
     func messengerModel(_ model: MessengerModel, didAddConnectedUser user : User?)
+    
+    
 }
 
 extension Notification.Name {
-    public static let MessengerModelReceivedMessage = Notification.Name(rawValue: "SensorModelActiveHillChangedNotification")
-    public static let MessengerModelSentMessage = Notification.Name(rawValue: "SensorModelHillReadingsChangedNotification")
+    public static let MessengerModelReceivedMessage = Notification.Name(rawValue: "MessengerModelReceivedNotification")
+    public static let MessengerModelSentMessage = Notification.Name(rawValue: "MessengerModelSentNotification")
 }
 
-
+// TODO: is this data structure what we want?
 struct Message {
     let content : String?
     let sender : User?
@@ -29,12 +31,12 @@ struct Message {
     let recipient : [String]?
 }
 
+// TODO: not sure if this is necessary
 enum Status : Int {
     case Unknown = -1
     case Offline = 0
     case IndirectlyConnected = 1
     case DirectlyConnected = 2
-    
 }
 
 
@@ -124,5 +126,7 @@ class MessengerModel : BLEDelegate {
         // update map of incomplete messages: something like...
         // updateMessageData(uuid: peripheral.identifier, data: data)
 
-    }    
+    }
+    
+    
 }
