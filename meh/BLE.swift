@@ -50,6 +50,7 @@ protocol BLEDelegate {
     func ble(didConnectToPeripheral peripheral: CBPeripheral)
     func ble(didDisconnectFromPeripheral peripheral: CBPeripheral)
     func ble(_ peripheral: CBPeripheral, didReceiveData data: Data?)
+    
 }
 
 private extension CBUUID {

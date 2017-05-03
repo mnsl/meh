@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		6920C7D41EB642C100BB16D0 /* MessengerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6920C7D31EB642C100BB16D0 /* MessengerModel.swift */; };
 		69E2A3261EB3CC99007308AE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E2A3251EB3CC99007308AE /* AppDelegate.swift */; };
 		69E2A32D1EB3CC99007308AE /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 69E2A32B1EB3CC99007308AE /* Main.storyboard */; };
 		69E2A32F1EB3CC99007308AE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 69E2A32E1EB3CC99007308AE /* Assets.xcassets */; };
@@ -21,6 +20,7 @@
 		C53AAB8A1EB6508E0086B876 /* UserlistTableViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C53AAB891EB6508E0086B876 /* UserlistTableViewController.swift */; };
 		C53AAB8D1EB65AE00086B876 /* UserTableViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C597E6B21EB3E17200E90ECC /* UserTableViewCell.swift */; };
 		C53AAB8F1EB6A6AC0086B876 /* UserListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C53AAB8E1EB6A6AC0086B876 /* UserListViewController.swift */; };
+		C573CDDD1EB9948100185A02 /* ChatViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C573CDDC1EB9948100185A02 /* ChatViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,6 +60,7 @@
 		C53AAB871EB64C8F0086B876 /* MessengerModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MessengerModel.swift; sourceTree = "<group>"; };
 		C53AAB891EB6508E0086B876 /* UserlistTableViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UserlistTableViewController.swift; sourceTree = "<group>"; };
 		C53AAB8E1EB6A6AC0086B876 /* UserListViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UserListViewController.swift; sourceTree = "<group>"; };
+		C573CDDC1EB9948100185A02 /* ChatViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChatViewController.swift; sourceTree = "<group>"; };
 		C597E6B21EB3E17200E90ECC /* UserTableViewCell.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UserTableViewCell.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -124,6 +125,7 @@
 				C53AAB851EB64AA00086B876 /* SettingsModel.swift */,
 				C53AAB891EB6508E0086B876 /* UserlistTableViewController.swift */,
 				C53AAB8E1EB6A6AC0086B876 /* UserListViewController.swift */,
+				C573CDDC1EB9948100185A02 /* ChatViewController.swift */,
 			);
 			path = meh;
 			sourceTree = "<group>";
@@ -290,6 +292,7 @@
 				C53AAB8A1EB6508E0086B876 /* UserlistTableViewController.swift in Sources */,
 				69E2A3261EB3CC99007308AE /* AppDelegate.swift in Sources */,
 				C53AAB861EB64AA00086B876 /* SettingsModel.swift in Sources */,
+				C573CDDD1EB9948100185A02 /* ChatViewController.swift in Sources */,
 				69E2A3561EB3D6D9007308AE /* BLE.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

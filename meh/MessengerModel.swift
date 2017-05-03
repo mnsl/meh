@@ -69,7 +69,7 @@ class MessengerModel : BLEDelegate {
     
     var delegate : MessengerModelDelegate?
     
-    var chats : [Chat]?
+    var chats : [User: [Message]]?
     var users : [UUID: User]?
     var ble: BLE?
     
