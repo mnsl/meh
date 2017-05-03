@@ -5,7 +5,7 @@
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  
  
-    Borrowed and modified by J. Maunsell to support multiple active peripheral connections.
+    Borrowed and modified by 6.S062 ME$H group to support multiple active peripheral connections.
  */
 
 import Foundation
@@ -95,16 +95,17 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     private      var activePeripheral: CBPeripheral?  // TODO: this may not be necessary ???
     //private      var characteristics = [String : CBCharacteristic]()
     
-    private var outboxes = [UUID: CBCharacteristic]()
+    private var peerInboxes = [UUID: CBCharacteristic]()
+    private var peerOutboxes = [UUID: CBCharacteristic]()
     
     private      var data:             NSMutableData? // <- not sure if this should be kept
-    private(set) var connectedPeripherals: [CBPeripheral]?
+    private(set) var connectedPeripherals: [UUID: CBPeripheral]?
     
     // Peripheral Manager Delegate stuff
     private      var peripheralManager: CBPeripheralManager!  // to handle connections made as a peripheral
-    private(set) var subscribedCentrals: [CBCentral]?
+    private(set) var subscribedCentrals: [UUID: CBCentral]?
     private var inbox : CBCharacteristic?
-
+    private var outbox : CBCharacteristic?
     
     private var peripheralData: [String: AnyObject]?
     var services: [CBMutableService]!
@@ -183,6 +184,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         centralManager.connect(peripheral, options: [CBConnectPeripheralOptionNotifyOnDisconnectionKey : NSNumber(value: true)])
         
+        // TODO: add peripheral to map connectedPeripherals
+        
         return true
     }
     
@@ -202,27 +205,25 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     // read data from peripheral you're actively connected to
     func read(uuid: UUID) {
         
-        guard let char = characteristics[CHAR_OUTBOX_UUID] else { return }
-
-        activePeripheral?.readValue(for: char)
-        // characteristics =
+        guard let char = peerOutboxes[uuid] else { return }
+        guard let peer = connectedPeripherals?[uuid] else { return }
+        peer.readValue(for: char)
         
     }
     
-    // write data to inbox peripheral you're actively connected to
+    // write data to inbox of peripheral you're actively connected to
     func write(data: NSData, uuid: UUID) {
         
-        guard let char = characteristics[CHAR_INBOX_UUID] else { return }
+        guard let char = peerInboxes[uuid] else { return }
         activePeripheral?.writeValue(data as Data, for: char, type: .withoutResponse)
     }
     
     // enable notifications for updates to active peripheral's outbox characteristic
-    func enableNotifications(enable: Bool) {
+    func enableNotifications(enable: Bool, uuid: UUID) {
         
-        guard let char = characteristics[CHAR_OUTBOX_UUID] else { return }
-        
-        activePeripheral?.setNotifyValue(enable, for: char)
-
+        guard let char = peerOutboxes[uuid] else { return }
+        guard let peer = connectedPeripherals?[uuid] else { return }
+        peer.setNotifyValue(enable, for: char)
         
     }
     
@@ -269,7 +270,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         
         peripheral.delegate = self
-        peripheral.discoverServices([CBUUID(SERVICE_UUID)])
+        peripheral.discoverServices([CBUUID(string: SERVICE_UUID)])
         
         delegate?.ble(didConnectToPeripheral: peripheral)
     }
@@ -283,11 +284,11 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         }
         
         print(text)
-        
+        /** TODO: replace this code with something that makes more sense
         activePeripheral?.delegate = nil
         activePeripheral = nil
         characteristics.removeAll(keepingCapacity: false)
-        
+        */
         delegate?.ble(didDisconnectFromPeripheral: peripheral)
     }
     
@@ -303,7 +304,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         
         for service in peripheral.services! {
-            let theCharacteristics = [CBUUID(redBearType: .charRx), CBUUID(redBearType: .charTx)]
+            let theCharacteristics = [CBUUID(string: CHAR_INBOX_UUID), CBUUID(string: CHAR_OUTBOX_UUID)]
             
             peripheral.discoverCharacteristics(theCharacteristics, for: service)
         }
@@ -319,10 +320,15 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         print("[DEBUG] Found characteristics for peripheral: \(peripheral.identifier.uuidString)")
         
         for characteristic in service.characteristics! {
-            characteristics[characteristic.uuid.uuidString] = characteristic
+            let charUUID = characteristic.uuid.uuidString
+            if charUUID == CHAR_INBOX_UUID {
+                peerInboxes[peripheral.identifier] = characteristic
+            } else if charUUID == CHAR_OUTBOX_UUID {
+                peerOutboxes[peripheral.identifier] = characteristic
+            }
         }
         
-        enableNotifications(enable: true)
+        enableNotifications(enable: true, uuid: peripheral.identifier)
     }
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
@@ -332,10 +338,11 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
             print("[ERROR] Error updating value. \(error!.localizedDescription)")
             return
         }
-        
+        /** TODO: return to this lol
         if characteristic.uuid.uuidString == RBL_CHAR_TX_UUID {
             delegate?.ble(peripheral, didReceiveData: characteristic.value as Data?)
         }
+         */
     }
     
     func peripheral(_ peripheral: CBPeripheral, didReadRSSI RSSI: NSNumber, error: Error?) {
@@ -356,17 +363,22 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         based on sample code in http://stackoverflow.com/questions/39679737/cbperipheral-service-seems-to-be-invisible
     */
     func setupService() {
-        let serviceUUID = CBUUID(string: RBL_SERVICE_UUID) // idk this was in some sample code
-        let characteristicUUID = CBUUID(string: RBL_CHAR_RX_UUID) // or RBL_CHAR_TX_UUID ???
+        let serviceUUID = CBUUID(string: SERVICE_UUID) // idk this was in some sample code
         
-        let characteristic = CBMutableCharacteristic(type: characteristicUUID,
-                                                     properties: .read,
+        let inboxCharacteristic = CBMutableCharacteristic(type: CBUUID(string: CHAR_INBOX_UUID),
+                                                     properties: .write, // inbox writable by peers
                                                      value: "".data(using: .utf8),
                                                      permissions: .readable)
         
+        let outboxCharacteristic = CBMutableCharacteristic(type: CBUUID(string: CHAR_OUTBOX_UUID),
+                                                          properties: .read, // outbox readable by peers
+                                                          value: "".data(using: .utf8),
+                                                          permissions: .readable)
+        
+        
         let service = CBMutableService(type: serviceUUID, primary: true)
         
-        service.characteristics = [characteristic]
+        service.characteristics = [inboxCharacteristic, outboxCharacteristic]
         
         services = [service]
         peripheralManager.add(service)
