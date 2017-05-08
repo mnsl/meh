@@ -367,13 +367,13 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     // TODO: required for PeripheralManagerDelegate protocol
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
         if peripheral.state == .poweredOn {
-            print("ble: peripheral is powered on!")
+            print("[DEBUG] peripheral is powered on!")
             blePeripheralManager.startAdvertising(peripheralData) // for now, peripheralData is empty (in future, maybe should be a list of reachable peers)
-            print("ble: started advertisting")
+            print("[DEBUG] started advertisting")
         } else if peripheral.state == .poweredOff {
-            print("ble: peripheral is powered OFF!")
+            print("[DEBUG] peripheral is powered OFF!")
             blePeripheralManager.stopAdvertising()
-            print("ble: peripheral stopped advertising!")
+            print("[DEBUG] peripheral stopped advertising!")
         }
     }
     
