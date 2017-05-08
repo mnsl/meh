@@ -17,7 +17,7 @@ class LoginViewController: UIViewController {
 
     @IBAction func connectToMeshNetwork(sender: UIButton) {
         registerUsername()
-        joinMeshNetwork()
+//        joinMeshNetwork()
     }
     
     override func viewDidLoad() {

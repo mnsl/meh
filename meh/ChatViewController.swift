@@ -11,6 +11,7 @@ import UIKit
 
 class ChatViewController: UIViewController, MessengerModelDelegate {
 
+    @IBOutlet weak var chatHeader: UINavigationBar!
     @IBOutlet weak var chatTextField: UITextView!
     @IBOutlet weak var messageInputField: UITextView!
     @IBOutlet weak var sendButton: UIButton!
@@ -20,6 +21,14 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
    
     override func viewDidLoad() {
         super.viewDidLoad()
+        var chatMembers = [String]()
+        var selected = Array(UserListViewController.selectedUsers)
+        if selected.count > 0 {
+        for i in 0...(selected.count-1) {
+            chatMembers.append(selected[i].name)
+        }
+        self.title =  chatMembers.joined(separator: ", ")
+        }
         print("chat view loaded")
         // Load messages from the messenger model and display them.
         clearChatDisplay()
@@ -35,7 +44,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     }
     
     func addMessageToDisplay(message: String) {
-        chatTextField.text = chatTextField.text +
+        chatTextField.text = chatTextField.text + SettingsModel.username! + ": "
             message + "\n"
     }
     
@@ -47,8 +56,8 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         
     }
     func messageToString(message: Message) -> String {
-        let username = MessengerModel.shared.users[message.sender]
-        return username + ": " + message.content! + "\n" as String
+        let sender = MessengerModel.shared.users?[message.sender]
+        return (sender?.name)! + ": " + message.content + "\n" as String
     }
     
     
