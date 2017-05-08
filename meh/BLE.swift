@@ -52,17 +52,17 @@ public extension LazyMapCollection  {
 }
 
 protocol BLEDelegate {
-    func ble(didUpdateState state: BLEState)
-    func ble(didDiscoverPeripheral peripheral: CBPeripheral)
-    func ble(didConnectToPeripheral peripheral: CBPeripheral)
-    func ble(didDisconnectFromPeripheral peripheral: CBPeripheral)
-    func ble(_ peripheral: CBPeripheral, didReceiveData data: Data?)
+    func didUpdateState(state: BLEState)
+    func didDiscoverPeripheral(peripheral: CBPeripheral)
+    func didConnectToPeripheral(peripheral: CBPeripheral)
+    func didDisconnectFromPeripheral(peripheral: CBPeripheral)
+    func didReceiveData(_ peripheral: CBPeripheral, data: Data?)
     
     // TODO: add methods that handle peripheral-side stuff
-    func ble(centralDidReadOutbox central: UUID, outboxContents: Data?)
-    func ble(didReceiveMessage data: Data?, from: UUID) -> Data?
-    func ble(centralDidSubscribe central: UUID)
-    func ble(centralDidUnsubscribe central: UUID)
+    func centralDidReadOutbox(central: UUID, outboxContents: Data?)
+    func didReceiveMessage(data: Data?, from: UUID) -> Data?
+    func centralDidSubscribe(central: UUID)
+    func centralDidUnsubscribe(central: UUID)
     
     func sendMessage(message: String, recipientUUID: UUID)
     func writeToInbox(data: Data, uuid: UUID)
@@ -105,7 +105,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     
     
     // Central Manager Delegate stuff
-    private      var centralManager:   CBCentralManager!
+    public      var bleCentralManager:   CBCentralManager!
     //private      var activePeripheral: CBPeripheral?  // TODO: this may not be necessary ???
     
     public var peerInboxes = [UUID: CBCharacteristic]()
@@ -115,7 +115,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     public var connectedPeripherals = [UUID: CBPeripheral]()
     
     // Peripheral Manager Delegate stuff
-    private      var peripheralManager: CBPeripheralManager!  // to handle connections made as a peripheral
+    public      var blePeripheralManager: CBPeripheralManager!  // to handle connections made as a peripheral
     public var subscribedCentrals = [UUID: CBCentral]()
     public var inbox : CBMutableCharacteristic!
     public var outbox : CBMutableCharacteristic!
@@ -137,8 +137,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         super.init()
         
         // TODO: do the two managers each need separate dispatch queues??
-        self.centralManager = CBCentralManager(delegate: self, queue: nil)
-        self.peripheralManager = CBPeripheralManager(delegate: self, queue: nil)
+        self.bleCentralManager = CBCentralManager(delegate: self, queue: nil)
+        self.blePeripheralManager = CBPeripheralManager(delegate: self, queue: nil)
         self.data = NSMutableData()
         self.inbox = CBMutableCharacteristic(type: CBUUID(string: CHAR_INBOX_UUID), properties: CBCharacteristicProperties.write, value: nil, permissions: CBAttributePermissions.writeable)
         self.outbox = CBMutableCharacteristic(type: CBUUID(string: CHAR_OUTBOX_UUID), properties: CBCharacteristicProperties.read, value: nil, permissions: CBAttributePermissions.readable)
@@ -149,7 +149,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     @objc private func scanTimeout() {
         
         print("[DEBUG] Scanning stopped")
-        self.centralManager.stopScan()
+        self.bleCentralManager.stopScan()
     }
     
     // MARK: Public methods
@@ -159,7 +159,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     // TODO: check that you're not already connected as a peripheral to a node you find
     func startScanning(timeout: Double) -> Bool {
         
-        if centralManager.state != .poweredOn {
+        if bleCentralManager.state != .poweredOn {
             print("[ERROR] Couldn´t start scanning")
             return false
         }
@@ -171,14 +171,14 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         Timer.scheduledTimer(timeInterval: timeout, target: self, selector: #selector(BLE.scanTimeout), userInfo: nil, repeats: false)
         
         let services:[CBUUID] = [CBUUID(string: SERVICE_UUID)]
-        centralManager.scanForPeripherals(withServices: services, options: nil)
+        bleCentralManager.scanForPeripherals(withServices: services, options: nil)
         
         return true
     }
     
     // stop scanning for nodes to connect to as a central node
     func stopScanning() {
-        centralManager.stopScan()
+        bleCentralManager.stopScan()
     }
     
     // TODO: advertise for nodes to connect to as a central node
@@ -191,14 +191,14 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     // TODO: announce to peers that new connection exists
     func connectToPeripheral(_ peripheral: CBPeripheral) -> Bool {
         
-        if centralManager.state != .poweredOn {
+        if bleCentralManager.state != .poweredOn {
             print("[ERROR] Couldn´t connect to peripheral")
             return false
         }
         
         print("[DEBUG] Connecting to peripheral: \(peripheral.identifier.uuidString)")
         
-        centralManager.connect(peripheral, options: [CBConnectPeripheralOptionNotifyOnDisconnectionKey : NSNumber(value: true)])
+        bleCentralManager.connect(peripheral, options: [CBConnectPeripheralOptionNotifyOnDisconnectionKey : NSNumber(value: true)])
         
         // TODO: add peripheral to map connectedPeripherals
         
@@ -208,13 +208,13 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     // TODO: announce to peers that connection is lost
     func disconnectFromPeripheral(_ peripheral: CBPeripheral) -> Bool {
         
-        if centralManager.state != .poweredOn {
+        if bleCentralManager.state != .poweredOn {
             
             print("[ERROR] Couldn´t disconnect from peripheral")
             return false
         }
         
-        centralManager.cancelPeripheralConnection(peripheral)
+        bleCentralManager.cancelPeripheralConnection(peripheral)
         return true
     }
 
@@ -243,7 +243,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         print("[DEBUG] Central manager state: \(central.state)")
         
-        delegate?.ble(didUpdateState: BLEState(rawValue: central.state.rawValue)!)
+        delegate?.didUpdateState(state: BLEState(rawValue: central.state.rawValue)!)
     }
     
     // TODO: code from Anteater, need to fix
@@ -252,7 +252,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         // TODO: check if peripheral UUID matches UUID in subscribedCentrals,
         // since each peer only needs to be subscribed as a central -or- connected as a peripheral
-        delegate?.ble(didDiscoverPeripheral: peripheral)
+        delegate?.didDiscoverPeripheral(peripheral: peripheral)
     }
     
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
@@ -269,7 +269,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         connectedPeripherals[peripheral.identifier] = peripheral
         
-        delegate?.ble(didConnectToPeripheral: peripheral)
+        delegate?.didConnectToPeripheral(peripheral: peripheral)
     }
     
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
@@ -286,7 +286,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         activePeripheral = nil
         characteristics.removeAll(keepingCapacity: false)
         */
-        delegate?.ble(didDisconnectFromPeripheral: peripheral)
+        delegate?.didDisconnectFromPeripheral(peripheral: peripheral)
     }
     
     // MARK: CBPeripheral delegate
@@ -354,7 +354,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         // if we've just read from the peripheral's outbox, 
         // then let the MessengerModel know
         if characteristic.uuid.uuidString == CHAR_OUTBOX_UUID {
-            delegate?.ble(peripheral, didReceiveData: characteristic.value as Data?)
+            delegate?.didReceiveData(peripheral, data: characteristic.value as Data?)
         }
     }
     
@@ -366,9 +366,9 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     // TODO: required for PeripheralManagerDelegate protocol
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
         if peripheral.state == .poweredOn {
-            peripheralManager.startAdvertising(peripheralData) // for now, peripheralData is empty (in future, maybe should be a list of reachable peers)
+            blePeripheralManager.startAdvertising(peripheralData) // for now, peripheralData is empty (in future, maybe should be a list of reachable peers)
         } else if peripheral.state == .poweredOff {
-            peripheralManager.stopAdvertising()
+            blePeripheralManager.stopAdvertising()
         }
     }
     
@@ -392,8 +392,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         let service = CBMutableService(type: serviceUUID, primary: true)
         service.characteristics = [inboxCharacteristic, outboxCharacteristic]
         
-        peripheralManager.add(service)
-        peripheralManager.startAdvertising([CBAdvertisementDataServiceUUIDsKey: [service.uuid]])
+        blePeripheralManager.add(service)
+        blePeripheralManager.startAdvertising([CBAdvertisementDataServiceUUIDsKey: [service.uuid]])
         
     }
     
@@ -429,10 +429,10 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
 
                 // TODO: add message in request.value to list of received messages for MessengerModel to handle
                 //       give delegate (MessengerModel) the data in request.value
-                delegate?.ble(didReceiveMessage: request.value, from: request.central.identifier)
-                peripheralManager.respond(to: request, withResult: CBATTError.Code.success) // respond to the write request positively
+                delegate?.didReceiveMessage(data: request.value, from: request.central.identifier)
+                blePeripheralManager.respond(to: request, withResult: CBATTError.Code.success) // respond to the write request positively
             } else {
-                peripheralManager.respond(to: request, withResult: CBATTError.Code.writeNotPermitted)
+                blePeripheralManager.respond(to: request, withResult: CBATTError.Code.writeNotPermitted)
             }
         }
         
@@ -441,11 +441,11 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveRead request: CBATTRequest) {
         if request.characteristic.uuid.uuidString == CHAR_OUTBOX_UUID {
             // central wants to read from this peripheral's outbox
-            peripheralManager.respond(to: request, withResult: CBATTError.Code.success)
+            blePeripheralManager.respond(to: request, withResult: CBATTError.Code.success)
             // TODO: for each message in outbox, add central to list of centrals that have read that message
-            delegate?.ble(centralDidReadOutbox: request.central.identifier, outboxContents: outbox.value)
+            delegate?.centralDidReadOutbox(central: request.central.identifier, outboxContents: outbox.value)
         } else {
-            peripheralManager.respond(to: request, withResult: CBATTError.Code.readNotPermitted)
+            blePeripheralManager.respond(to: request, withResult: CBATTError.Code.readNotPermitted)
         }
     }
 
