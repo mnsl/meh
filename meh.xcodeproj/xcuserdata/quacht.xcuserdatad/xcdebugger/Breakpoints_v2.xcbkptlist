@@ -26,11 +26,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "meh/LoginViewController.swift"
-            timestampString = "515263667.059595"
+            timestampString = "515956447.147978"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "42"
-            endingLineNumber = "42"
+            startingLineNumber = "54"
+            endingLineNumber = "54"
             landmarkName = "registerUsername()"
             landmarkType = "7">
          </BreakpointContent>
@@ -316,7 +316,9 @@
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "100"
-            endingLineNumber = "100">
+            endingLineNumber = "100"
+            landmarkName = "didReceiveMessage(_:msg:)"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>
