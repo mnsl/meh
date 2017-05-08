@@ -79,21 +79,20 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     }
     
     // MARK: MessengerModelDelegate functions
-    func messengerModel(_ model: MessengerModel, didSendMessage msg : Message?) {
-        return;
+    func didSendMessage(_ model: MessengerModel, msg: Message?) {
+        // TODO
     }
     
-    func messengerModel(_ model: MessengerModel, didReceiveMessage msg : Message?) {
-        return;
+    func didReceiveMessage(_ model: MessengerModel, msg: Message?) {
+        // TODO
     }
     
-    func messengerModel(_ model: MessengerModel, didAddConnectedUser user : User?) {
-        addUsername(username: (user?.name)!)
+    func didAddConnectedUser(_ model: MessengerModel, user: UUID) {
+        // TODO
     }
     
-    
-    
-    
-    
+    func didDisconnectFromUser(_ model: MessengerModel, user: UUID) {
+        // TODO
+    }
     
 }

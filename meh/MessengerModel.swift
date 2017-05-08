@@ -11,11 +11,10 @@ import UIKit
 import CoreBluetooth
 
 protocol MessengerModelDelegate {
-    func messengerModel(_ model: MessengerModel, didSendMessage msg : Message?)
-    func messengerModel(_ model: MessengerModel, didReceiveMessage msg : Message?)
-    func messengerModel(_ model: MessengerModel, didAddConnectedUser user : UUID)
-    func messengerModel(_ model: MessengerModel, didDisconnectFromUser user : UUID)
-    
+    func didSendMessage(_ model: MessengerModel, msg: Message?)
+    func didReceiveMessage(_ model: MessengerModel, msg: Message?)
+    func didAddConnectedUser(_ model: MessengerModel, user: UUID)
+    func didDisconnectFromUser(_ model: MessengerModel, user: UUID)
 }
 
 extension Notification.Name {
@@ -228,7 +227,7 @@ class MessengerModel : BLEDelegate {
     func didConnectToPeripheral(peripheral: CBPeripheral) {
         print("connecting to peripheral \(peripheral)...")
         MessengerModel.shared.users?[peripheral.identifier] = peripheral.name!
-        delegate?.messengerModel(.shared, didAddConnectedUser: peripheral.identifier)
+        delegate?.didAddConnectedUser(.shared, user: peripheral.identifier)
     }
     
     func didDisconnectFromPeripheral(peripheral: CBPeripheral) {
@@ -236,7 +235,7 @@ class MessengerModel : BLEDelegate {
         print("disconnected from peripheral \(peripheral)...")
 
         // view controller delegate should update list of connected users
-        delegate?.messengerModel(.shared, didDisconnectFromUser: peripheral.identifier)
+        delegate?.didDisconnectFromUser(.shared, user: peripheral.identifier)
 
     }
     
@@ -260,7 +259,7 @@ class MessengerModel : BLEDelegate {
         let message = jsonDataToMessage(data: data!)
         if UUID(uuid: (message?.recipient.uuid)!) == UIDevice.current.identifierForVendor! {
             print("message received was intended for this user")
-            delegate?.messengerModel(.shared, didReceiveMessage: message)
+            delegate?.didReceiveMessage(.shared, msg: message)
         } else {
             sendMessage(message: message!, exclude: sender)
         }
@@ -274,19 +273,19 @@ class MessengerModel : BLEDelegate {
         // for msg in messages parsed from data: call messengerModel(_ model: shared, didReceiveMessage: msg)
 
         for message in messages! {
-            delegate?.messengerModel(.shared, didReceiveMessage: message)
+            delegate?.didReceiveMessage(.shared, msg: message)
         }
     }
     
     func centralDidSubscribe(central: UUID) {
         print("central \(central) just subscribed")
         // TODO: update UUID -> username map somehow... central doesn't have a "name"
-        delegate?.messengerModel(.shared, didAddConnectedUser: central)
+        delegate?.didAddConnectedUser(.shared, user: central)
     }
     
     func centralDidUnsubscribe(central: UUID) {
         print("central \(central) just unsubscribed")
-        delegate?.messengerModel(.shared, didDisconnectFromUser: central)
+        delegate?.didDisconnectFromUser(.shared, user: central)
     }
     
     /**

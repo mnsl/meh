@@ -65,23 +65,19 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         // MessengerModel.shared.sendMessage(message: message, uuid: recipientUUID)
     }
     
-    func messengerModel(_ model: MessengerModel, didSendMessage msg : Message?) {
-        print("messenger model did send message")
+    // MARK: MessengerModelDelegate functions
+    func didSendMessage(_ model: MessengerModel, msg: Message?) {
         // TODO
-        return
-    }
-    func messengerModel(_ model: MessengerModel, didReceiveMessage msg : Message?){
-        print("messenger model did recieve message")
-        // TODO
-        return
-    }
-    func messengerModel(_ model: MessengerModel, didAddConnectedUser user : UUID) {
-        print("messenger model did add connected user")
-        // TODO
-        return
     }
     
-    func messengerModel(_ model: MessengerModel, didDisconnectFromUser user : UUID) {
+    func didReceiveMessage(_ model: MessengerModel, msg: Message?) {
         // TODO
     }
-}
+    
+    func didAddConnectedUser(_ model: MessengerModel, user: UUID) {
+        // TODO
+    }
+    
+    func didDisconnectFromUser(_ model: MessengerModel, user: UUID) {
+        // TODO
+    }}
