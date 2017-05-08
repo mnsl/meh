@@ -42,7 +42,7 @@ struct Message : JSONSerializable, Hashable {
 
 struct User : Hashable {
     let uuid : UUID
-    let name : String
+    let name : String?
     
     // conform to Hashable protocol
     var hashValue: Int {
@@ -133,8 +133,8 @@ class MessengerModel : BLEDelegate {
     }
     
     // overwrite outbox contents
-    func overwriteOutbox(data: Data) {
-        if (self.ble?.blePeripheralManager.updateValue(data, for: (self.ble?.outbox)!, onSubscribedCentrals: self.ble?.subscribedCentrals.values.toArray()))! {
+    func overwriteOutbox(data: Data?) {
+        if (self.ble?.blePeripheralManager.updateValue(data!, for: (self.ble?.outbox)!, onSubscribedCentrals: self.ble?.subscribedCentrals.values.toArray()))! {
             print("successfully updated outbox characteristic")
         } else {
             print("[ERROR] could not update outbox characteristic")
@@ -334,9 +334,27 @@ class MessengerModel : BLEDelegate {
         return nil
     }
 
-    func jsonDataToOutbox(data: Data) -> [Message]? {
+    func jsonDataToOutbox(data: Data?) -> [Message]? {
         //let json = try? JSONSerialization.jsonObject(with: data, options: [])
-        return nil // TODO: implement
+        
+        if let outboxData = data {
+            var messages = [Message]()
+            let json = try? JSONSerialization.jsonObject(with: outboxData, options: [])
+            if let outboxJSON = json as? [ [String: String] ] {
+                for messageDict in outboxJSON {
+                    let content = messageDict["content"]
+                    let sender = UUID(uuidString: messageDict["sender"]!)
+                    let recipient = UUID(uuidString: messageDict["recipient"]!)
+                    let dateFormatter = DateFormatter()
+                    let date = dateFormatter.date(from: messageDict["date"]!)
+                    
+                    let message = Message(content: content!, sender: sender!, date: date!, recipient: recipient!)
+                    messages.append(message)
+                }
+                return messages
+            }
+        }
+        return nil
     }
 
 }

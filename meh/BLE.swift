@@ -67,7 +67,7 @@ protocol BLEDelegate {
     func sendMessage(message: String, recipientUUID: UUID)
     func writeToInbox(data: Data, uuid: UUID) -> Bool
     func addMessageToOutbox(message: Message) -> Bool
-    func overwriteOutbox(data: Data)
+    func overwriteOutbox(data: Data?)
 
 }
 
