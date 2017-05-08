@@ -34,8 +34,11 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
         tableView.dataSource = self
         tableView.allowsMultipleSelection = true
         tableView.beginUpdates()
+
         // NOTE: in the beginning, onlineUsers is nil, because we have not been able to identify any users nearby.
-        if UserListViewController.onlineUsersArray.count != 0 {
+        if UserListViewController.onlineUsersArray.count == 0 {
+        print("no online users")
+        } else {
         for i in 0...(UserListViewController.onlineUsersArray.count-1) {
             var name = UserListViewController.onlineUsersArray[i].name
             if name == nil {
@@ -43,6 +46,7 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
             }
             addUsername(username: name!)
         }
+
         }
         tableView.endUpdates()
     }
