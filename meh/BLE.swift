@@ -170,7 +170,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         Timer.scheduledTimer(timeInterval: timeout, target: self, selector: #selector(BLE.scanTimeout), userInfo: nil, repeats: false)
         
         let services:[CBUUID] = [CBUUID(string: SERVICE_UUID)]
-        bleCentralManager.scanForPeripherals(withServices: services, options: nil)
+        bleCentralManager.scanForPeripherals(withServices: nil, options: nil)
+        //bleCentralManager.scanForPeripherals(withServices: services, options: nil)
         
         return true
     }
@@ -403,6 +404,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         // TODO: check if central UUID matches UUID in connectedPeripherals,
         // since each peer only needs to be subscribed as a central -or- connected as a peripheral
+        print("\(central) just subscribed to characteristic \(characteristic)")
         
     }
     
@@ -410,6 +412,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         // if characteristic is outbox,
         // remove central from subscribedCentrals
         // (and announce connection lost??)
+        print("\(central) just unsubscribed from characteristic \(characteristic)")
+
     }
     
     func peripheralManagerIsReady(toUpdateSubscribers peripheral: CBPeripheralManager) {
