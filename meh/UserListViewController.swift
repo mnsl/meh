@@ -35,8 +35,12 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
         
         tableView.beginUpdates()
         
-        for i in 0...onlineUsers.count {
-            addUsername(username: onlineUsers[i])
+        if onlineUsers.count == 0 {
+            print("no online users")
+        } else {
+            for i in 0...onlineUsers.count {
+                addUsername(username: onlineUsers[i])
+            }
         }
         
         tableView.endUpdates()
