@@ -178,6 +178,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     // stop scanning for nodes to connect to as a central node
     func stopScanning() {
         bleCentralManager.stopScan()
+        print("ble central manager stopped scanning")
     }
     
     // TODO: advertise for nodes to connect to as a central node
@@ -360,9 +361,13 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     // TODO: required for PeripheralManagerDelegate protocol
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
         if peripheral.state == .poweredOn {
+            print("[DEBUG] peripheral is powered on!")
             blePeripheralManager.startAdvertising(peripheralData) // for now, peripheralData is empty (in future, maybe should be a list of reachable peers)
+            print("[DEBUG] started advertisting")
         } else if peripheral.state == .poweredOff {
+            print("[DEBUG] peripheral is powered OFF!")
             blePeripheralManager.stopAdvertising()
+            print("[DEBUG] peripheral stopped advertising!")
         }
     }
     
@@ -375,11 +380,12 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         let inboxCharacteristic = CBMutableCharacteristic(type: CBUUID(string: CHAR_INBOX_UUID),
                                                      properties: .write, // inbox writable by peers
                                                      value: nil,
-                                                     permissions: .readable)
+                                                     permissions: .writeable)
+
         
         let outboxCharacteristic = CBMutableCharacteristic(type: CBUUID(string: CHAR_OUTBOX_UUID),
                                                           properties: .read, // outbox readable by peers
-                                                          value: "".data(using: .utf8),
+                                                          value: nil,
                                                           permissions: .readable)
         
         

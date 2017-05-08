@@ -11,12 +11,24 @@ import UIKit
 
 class ChatViewController: UIViewController, MessengerModelDelegate {
 
+    @IBOutlet weak var chatHeader: UINavigationBar!
     @IBOutlet weak var chatTextField: UITextView!
     @IBOutlet weak var messageInputField: UITextView!
     @IBOutlet weak var sendButton: UIButton!
+    
+    // TODO(quacht): Preliminary character limit... will update after testing what is the maximum you can write to a characteristic.
+    let message_character_limit = 10000;
    
     override func viewDidLoad() {
         super.viewDidLoad()
+        var chatMembers = [String]()
+        var selected = Array(UserListViewController.selectedUsers)
+        if selected.count > 0 {
+        for i in 0...(selected.count-1) {
+            chatMembers.append(selected[i].name!)
+        }
+        self.title =  chatMembers.joined(separator: ", ")
+        }
         print("chat view loaded")
         // Load messages from the messenger model and display them.
         clearChatDisplay()
@@ -32,7 +44,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     }
     
     func addMessageToDisplay(message: String) {
-        chatTextField.text = chatTextField.text +
+        chatTextField.text = chatTextField.text + SettingsModel.username! + ": "
             message + "\n"
     }
     
@@ -44,8 +56,8 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         
     }
     func messageToString(message: Message) -> String {
-        // TODO: fetch username from UUID -> username map
-        return message.sender.uuidString + ": " + message.content + "\n" as String
+        let sender = MessengerModel.shared.users?[message.sender]
+        return (sender?.name)! + ": " + message.content + "\n" as String
     }
     
     

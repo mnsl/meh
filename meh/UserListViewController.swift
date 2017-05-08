@@ -14,10 +14,10 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     @IBOutlet weak var tableView: UITableView!
     @IBOutlet weak var startchat: UIButton!
     
-    // var onlineUsers = MessengerModel.shared.users
+    var onlineUsers = MessengerModel.shared.users
+    public static var onlineUsersArray: Array<User> = []
     // TODO(quacht): pull onlineUsers from the messenger model
-    var onlineUsers = ["keam", "mnsl", "quacht"];
-    var selectedUsers: Set = Set<String>()
+    public static var selectedUsers: Set = Set<User>()
     
     // MARK: - UITableViewDataSource
     
@@ -25,14 +25,14 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     
     @IBAction func startChatButtonClick(_ sender: Any) {
         print("starting chat with ")
-        print(selectedUsers)
+        print(UserListViewController.selectedUsers)
     }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         tableView.delegate = self
         tableView.dataSource = self
         tableView.allowsMultipleSelection = true
-        
         tableView.beginUpdates()
         
         print("online users: \(onlineUsers)")
@@ -42,13 +42,17 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
             for i in 0..<onlineUsers.count {
                 addUsername(username: onlineUsers[i])
             }
+            addUsername(username: name!)
         }
-        
+
+        }
         tableView.endUpdates()
     }
     
     func addUsername(username:String) {
         let cell_to_fill = tableView.dequeueReusableCell(withIdentifier: "Username")
+        print("cell_to_fill")
+        print(cell_to_fill!)
         cell_to_fill?.textLabel?.text = username
     }
 
@@ -57,7 +61,7 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return onlineUsers.count
+        return UserListViewController.onlineUsersArray.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -65,22 +69,24 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
         
         cell.accessoryType = cell.isSelected ? .checkmark : .none
         //        cell.selectionStyle = .none // to prevent cells from being "highlighted"
-        print(onlineUsers[indexPath.row])
-        cell.textLabel?.text = onlineUsers[indexPath.row]
+        print(UserListViewController.onlineUsersArray[indexPath.row].name)
+        cell.textLabel?.text = UserListViewController.onlineUsersArray[indexPath.row].name
         
         return cell
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-        let selectedUser = tableView.cellForRow(at: indexPath as IndexPath)?.textLabel?.text;
-        selectedUsers.insert(selectedUser!);
+        // let selectedUser = tableView.cellForRow(at: indexPath as IndexPath)?.textLabel?.text;
+        let selectedUser = UserListViewController.onlineUsersArray[indexPath.row]
+        UserListViewController.selectedUsers.insert(selectedUser);
     }
     
     func tableView(_ tableView: UITableView, didDeselectRowAt indexPath: IndexPath) {
         tableView.cellForRow(at: indexPath)?.accessoryType = .none
-        let deselectedUser = tableView.cellForRow(at: indexPath as IndexPath)?.textLabel?.text;
-        selectedUsers.remove(deselectedUser!);
+//        let deselectedUser = tableView.cellForRow(at: indexPath as IndexPath)?.textLabel?.text;
+        let deselectedUser = UserListViewController.onlineUsersArray[indexPath.row];
+        UserListViewController.selectedUsers.remove(deselectedUser);
     }
     
     // MARK: MessengerModelDelegate functions
@@ -91,13 +97,22 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     func didReceiveMessage(_ model: MessengerModel, msg: Message?) {
         // TODO
     }
-    
+
     func didAddConnectedUser(_ model: MessengerModel, user: UUID) {
-        // TODO
+        UserListViewController.onlineUsersArray = Array(MessengerModel.shared.users!.values)
+        tableView.beginUpdates()
+        if MessengerModel.shared.users?[user] != nil {
+            let user = MessengerModel.shared.users?[user]
+            addUsername(username: (user?.name)!)
+    } else {
+        addUsername(username: (user.uuidString))
+    }
+        tableView.endUpdates()
     }
     
     func didDisconnectFromUser(_ model: MessengerModel, user: UUID) {
         // TODO
     }
+    
     
 }

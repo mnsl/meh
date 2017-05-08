@@ -63,7 +63,7 @@ class MessengerModel : BLEDelegate {
     var delegate : MessengerModelDelegate?
     
     var chats : [User: [Message]]?
-    var users : [UUID: String]? // uuid -> username map for all known users
+    var users : [UUID: User]? // uuid -> username map for all known users
     var ble: BLE?
     
     init() {
@@ -218,7 +218,9 @@ class MessengerModel : BLEDelegate {
         } else {
             print("connected to peripheral: \(peripheral)")
             // Add peripheral to list of connected users.
-            MessengerModel.shared.users?[peripheral.identifier] = peripheral.name
+            // Create a user object from peripheral.
+            let newUser = User(uuid: peripheral.identifier, name: peripheral.name)
+            MessengerModel.shared.users?[peripheral.identifier] = newUser
         }
         
         // TODO: keep scanning??
@@ -226,7 +228,6 @@ class MessengerModel : BLEDelegate {
     
     func didConnectToPeripheral(peripheral: CBPeripheral) {
         print("connecting to peripheral \(peripheral)...")
-        MessengerModel.shared.users?[peripheral.identifier] = peripheral.name!
         delegate?.didAddConnectedUser(.shared, user: peripheral.identifier)
     }
     
