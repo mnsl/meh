@@ -37,7 +37,11 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
         // NOTE: in the beginning, onlineUsers is nil, because we have not been able to identify any users nearby.
         if UserListViewController.onlineUsersArray.count != 0 {
         for i in 0...(UserListViewController.onlineUsersArray.count-1) {
-            addUsername(username: UserListViewController.onlineUsersArray[i].name)
+            var name = UserListViewController.onlineUsersArray[i].name
+            if name == nil {
+                name = UserListViewController.onlineUsersArray[i].uuid.uuidString
+            }
+            addUsername(username: name!)
         }
         }
         tableView.endUpdates()
@@ -84,25 +88,29 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     }
     
     // MARK: MessengerModelDelegate functions
-    func messengerModel(_ model: MessengerModel, didSendMessage msg : Message?) {
-        return;
+    func didSendMessage(_ model: MessengerModel, msg: Message?) {
+        // TODO
     }
     
-    func messengerModel(_ model: MessengerModel, didReceiveMessage msg : Message?) {
-        return;
+    func didReceiveMessage(_ model: MessengerModel, msg: Message?) {
+        // TODO
     }
-    
-    func messengerModel(_ model: MessengerModel, didAddConnectedUser user : User?) {
+
+    func didAddConnectedUser(_ model: MessengerModel, user: UUID) {
         UserListViewController.onlineUsersArray = Array(MessengerModel.shared.users!.values)
         tableView.beginUpdates()
-        addUsername(username: (user?.name)!)
+        if MessengerModel.shared.users?[user] != nil {
+            let user = MessengerModel.shared.users?[user]
+            addUsername(username: (user?.name)!)
+    } else {
+        addUsername(username: (user.uuidString))
+    }
         tableView.endUpdates()
     }
     
-    
-    
-    
-    
+    func didDisconnectFromUser(_ model: MessengerModel, user: UUID) {
+        // TODO
+    }
     
     
 }
