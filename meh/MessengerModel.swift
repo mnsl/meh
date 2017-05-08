@@ -13,8 +13,8 @@ import CoreBluetooth
 protocol MessengerModelDelegate {
     func messengerModel(_ model: MessengerModel, didSendMessage msg : Message?)
     func messengerModel(_ model: MessengerModel, didReceiveMessage msg : Message?)
-    func messengerModel(_ model: MessengerModel, didAddConnectedUser user : User?)
-    
+    func messengerModel(_ model: MessengerModel, didAddConnectedUser user : UUID)
+    func messengerModel(_ model: MessengerModel, didDisconnectFromUser user : UUID)
     
 }
 
@@ -64,7 +64,7 @@ class MessengerModel : BLEDelegate {
     var delegate : MessengerModelDelegate?
     
     var chats : [User: [Message]]?
-    var users : [UUID: User]?
+    var users : [UUID: String]? // uuid -> username map for all known users
     var ble: BLE?
     
     init() {
@@ -73,68 +73,128 @@ class MessengerModel : BLEDelegate {
     }
     
     
-    func sendMessage(message: String, recipientUUID: UUID){
-        // TODO: only count the message as sent if we receive an ACK
-        // Convert the string to a Message struct
-        
-
-        // if recipientUUID in connectedPeripherals, send directly to that peripheral's inbox.
-        
-        // else stick the message in this node's peripheral's outbox.
-        
-        let message = Message(content: message, sender: UIDevice.current.identifierForVendor!, date: Date(), recipient: recipientUUID)
-        let messageData = messageToJSONData(message: message)
-        
-        // Check to see if the recipient is connected a central or peripheral node
-        if (ble?.connectedPeripherals[recipientUUID] != nil) {
-            // Write to the peripheral's inbox characteristic
-            writeToInbox(data: messageData!,uuid: recipientUUID)
-        } else if (ble?.subscribedCentrals[recipientUUID] != nil) {
-            // Update own characteristic.
-            addMessageToOutbox(messageData: messageData!)
-        } else {
-            // The UUID is of a recipient that is not currently connected.
-            writeToAllInboxes(data: messageData!)
-            
-            print("Invalid recipient UUID; not currently connected.")
-        }
-        
-    }
-    
     // write data to inbox of a specific peripheral,
     // probably because they're the recipient of this message
     // (later, we will also use this to do smarter routing --
     // only write to inboxes of peripherals who can reach
     // the recipient
-    func writeToInbox(data: Data, uuid: UUID) {
+    /*!
+     * @method writeToInbox:
+     *
+     * @param data  JSON-formatted data to be written
+     * @param uuid  UUID of peripheral whose inbox the data will be written to
+     *
+     * @return true iff given UUID corresponds to a connected peripheral
+     *
+     * @discussion  Write data to inbox of a specific peripheral
+     *
+     */
+    func writeToInbox(data: Data, uuid: UUID) -> Bool {
         
-        guard let char = ble?.peerInboxes[uuid] else { return }
-        guard let peer = ble?.connectedPeripherals[uuid] else { return }
+        guard let inboxCharacteristic = ble?.peerInboxes[uuid] else { return false }
+        guard let peer = ble?.connectedPeripherals[uuid] else { return false }
         
-        peer.writeValue(data, for: char, type: .withoutResponse)
+        peer.writeValue(data, for: inboxCharacteristic, type: .withoutResponse)
+        return true
     }
     
     // write message to the inboxes of all peripherals this
-    // node's central is subscribed to
-    func writeToAllInboxes(data: Data) {
+    // node's central is subscribed to, except "exclude" 
+    // (the peer who sent you the message)
+    func writeToAllInboxes(data: Data, exclude: UUID) {
         // for every peripheral this node's central is subscribed to,
         // write the message data to their inbox.
+        for (uuid, _) in (ble?.connectedPeripherals)! {
+            if uuid == exclude {
+                continue // don't want to send message back to peer who sent you it
+            }
+            let success = writeToInbox(data: data, uuid: uuid)
+            if !success {
+                print("failed to write to inbox of peripheral \(uuid)")
+            }
+        }
     }
     
     /**
      Add message to outbox if the message has not been added before.
+     * @param data  JSON-formatted message data
+     * @return true iff message was successfully added (TODO)
      */
-    func addMessageToOutbox(messageData: Data) -> Bool {
-        // TODO
+    func addMessageToOutbox(message: Message) -> Bool {
+
+        let oldOutboxData = self.ble?.inbox.value
+        var outbox = jsonDataToOutbox(data: oldOutboxData!)!
+        outbox.append(message)
+        
+        let newOutboxData = outboxToJSONData(outbox: outbox)
+        
+        overwriteOutbox(data: newOutboxData!)
+        
         return true
     }
     
     // overwrite outbox contents
     func overwriteOutbox(data: Data) {
         if (self.ble?.blePeripheralManager.updateValue(data, for: (self.ble?.outbox)!, onSubscribedCentrals: self.ble?.subscribedCentrals.values.toArray()))! {
-            print("successfully updated characteristic")
+            print("successfully updated outbox characteristic")
         } else {
-            print("[ERROR] could not update own characteristic")
+            print("[ERROR] could not update outbox characteristic")
+        }
+    }
+    
+    /**
+     * @method sendMessage:
+     *
+     * @param message         The user input text to be sent as a message.
+     * @param recipientUUID   The UUID of the message's intended recipient.
+     *
+     * @discussion    The message is not guaranteed to reach the recipient.
+     *                We don't currently have a way of notifying the sender
+     *                if the message has gone through or failed.
+     *
+     */
+    func sendMessage(message: String, recipientUUID: UUID){
+        // TODO: only count the message as sent if we receive an ACK
+        // Convert the string to a Message struct
+        
+        
+        // if recipientUUID in connectedPeripherals, send directly to that peripheral's inbox.
+        
+        // else stick the message in this node's peripheral's outbox.
+        
+        let message = Message(content: message, sender: UIDevice.current.identifierForVendor!, date: Date(), recipient: recipientUUID)
+        sendMessage(message: message, exclude: UIDevice.current.identifierForVendor!)
+    }
+    
+    func sendMessage(message: Message, exclude: UUID) {
+        let messageData = messageToJSONData(message: message)
+        
+        // Check to see if the recipient is connected a central or peripheral node
+        if (ble?.connectedPeripherals[message.recipient] != nil) {
+            // Write to the peripheral's inbox characteristic
+            let success = writeToInbox(data: messageData!, uuid: message.recipient)
+            if success {
+                print("successfully wrote to inbox of message recipient \(message.recipient), who happened to be directly connected as a peripheral")
+            } else {
+                print("failed to write to inbox of message recipient, even though they were directly connected as a peripheral")
+            }
+        } else {
+            if (ble?.subscribedCentrals[message.recipient] != nil) {
+                // Update this node's outbox so that the connected central can read.
+                print("message recipient is a subscribed central and should read message from this node's outbox")
+            } else {
+                // The UUID is of a recipient that is not currently connected.
+                print("message recipient is not a direct peer, so writing to all connected peripherals' inboxes and to this node's outbox for subscribed centrals to read")
+                writeToAllInboxes(data: messageData!, exclude: exclude)
+            }
+            
+            let success = addMessageToOutbox(message: message)
+            if success {
+                print("outbox successfully updated")
+            } else {
+                print("failed to add message to outbox :(")
+            }
+            
         }
     }
     
@@ -159,7 +219,7 @@ class MessengerModel : BLEDelegate {
         } else {
             print("connected to peripheral: \(peripheral)")
             // Add peripheral to list of connected users.
-            MessengerModel.shared.users?[peripheral.identifier] = User(uuid: peripheral.identifier, name: peripheral.name!)
+            MessengerModel.shared.users?[peripheral.identifier] = peripheral.name
         }
         
         // TODO: keep scanning??
@@ -167,25 +227,16 @@ class MessengerModel : BLEDelegate {
     
     func didConnectToPeripheral(peripheral: CBPeripheral) {
         print("connecting to peripheral \(peripheral)...")
-        let user = User(uuid: peripheral.identifier, name: peripheral.name!)
-        MessengerModel.shared.users?[peripheral.identifier] = user
-        delegate?.messengerModel(.shared, didAddConnectedUser: user)
-        // TODO: send usermap over to new 
+        MessengerModel.shared.users?[peripheral.identifier] = peripheral.name!
+        delegate?.messengerModel(.shared, didAddConnectedUser: peripheral.identifier)
     }
     
     func didDisconnectFromPeripheral(peripheral: CBPeripheral) {
-        // broadcast "lostPeer" message
-    }
+        // TODO: broadcast "lostPeer" message
+        print("disconnected from peripheral \(peripheral)...")
 
-    func didReceiveData(_ peripheral: CBPeripheral, data: Data?) {
-        print("receiving data...")
-        if data == nil {
-            print("nil data received")
-            return
-        }
-        
-        // update map of incomplete messages: something like...
-        // updateMessageData(uuid: peripheral.identifier, data: data)
+        // view controller delegate should update list of connected users
+        delegate?.messengerModel(.shared, didDisconnectFromUser: peripheral.identifier)
 
     }
     
@@ -198,24 +249,44 @@ class MessengerModel : BLEDelegate {
         // we should remove that message from the outbox.
     }
     
-    func didReceiveMessage(data: Data?, from: UUID) -> Data? {
+    func didReceiveMessage(data: Data?, sender: UUID) {
         // Convert the message JSON-formatted data into a Message.
         // If the recipient UUID matches that of a connected peripheral,
         // update that peripheral's inbox specifically.
         // Otherwise, if we have not already added the message to our peripheral's outbox,
         // add the message to our outbox.
-        let currentOutboxContents = ble?.outbox.value
         // unpack outbox data into messages, update outbox contents as necessary
-        return nil // if outbox does not need to be updated
+        
+        let message = jsonDataToMessage(data: data!)
+        if UUID(uuid: (message?.recipient.uuid)!) == UIDevice.current.identifierForVendor! {
+            print("message received was intended for this user")
+            delegate?.messengerModel(.shared, didReceiveMessage: message)
+        } else {
+            sendMessage(message: message!, exclude: sender)
+        }
+        
     }
     
-    // if we are 
-    func centralDidSubscribe(central: UUID) {
+    func didReadPeerOutbox(_ peripheral: CBPeripheral, data: Data?) {
+        // parse data as list of messages.. if a message is new, update the delegate
+        let messages = jsonDataToOutbox(data: data!)
         
+        // for msg in messages parsed from data: call messengerModel(_ model: shared, didReceiveMessage: msg)
+
+        for message in messages! {
+            delegate?.messengerModel(.shared, didReceiveMessage: message)
+        }
+    }
+    
+    func centralDidSubscribe(central: UUID) {
+        print("central \(central) just subscribed")
+        // TODO: update UUID -> username map somehow... central doesn't have a "name"
+        delegate?.messengerModel(.shared, didAddConnectedUser: central)
     }
     
     func centralDidUnsubscribe(central: UUID) {
-        
+        print("central \(central) just unsubscribed")
+        delegate?.messengerModel(.shared, didDisconnectFromUser: central)
     }
     
     /**
@@ -230,6 +301,9 @@ class MessengerModel : BLEDelegate {
         return nil
     }
     
+    func outboxToJSONData(outbox: [Message]) -> Data? {
+        return nil // TODO
+    }
     
     
     /**
@@ -239,6 +313,7 @@ class MessengerModel : BLEDelegate {
     func removeMessageFromOutbox(message: Message) -> Bool {
         return true // TODO
     }
+    
     
     
     
@@ -261,7 +336,7 @@ class MessengerModel : BLEDelegate {
     }
 
     func jsonDataToOutbox(data: Data) -> [Message]? {
-        let json = try? JSONSerialization.jsonObject(with: data, options: [])
+        //let json = try? JSONSerialization.jsonObject(with: data, options: [])
         return nil // TODO: implement
     }
 

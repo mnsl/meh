@@ -56,19 +56,18 @@ protocol BLEDelegate {
     func didDiscoverPeripheral(peripheral: CBPeripheral)
     func didConnectToPeripheral(peripheral: CBPeripheral)
     func didDisconnectFromPeripheral(peripheral: CBPeripheral)
-    func didReceiveData(_ peripheral: CBPeripheral, data: Data?)
+    func didReadPeerOutbox(_ peripheral: CBPeripheral, data: Data?)
     
     // TODO: add methods that handle peripheral-side stuff
     func centralDidReadOutbox(central: UUID, outboxContents: Data?)
-    func didReceiveMessage(data: Data?, from: UUID) -> Data?
+    func didReceiveMessage(data: Data?, sender: UUID)
     func centralDidSubscribe(central: UUID)
     func centralDidUnsubscribe(central: UUID)
     
     func sendMessage(message: String, recipientUUID: UUID)
-    func writeToInbox(data: Data, uuid: UUID)
-    func addMessageToOutbox(messageData: Data) -> Bool
+    func writeToInbox(data: Data, uuid: UUID) -> Bool
+    func addMessageToOutbox(message: Message) -> Bool
     func overwriteOutbox(data: Data)
-
 
 }
 
@@ -281,11 +280,6 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         }
         
         print(text)
-        /** TODO: replace this code with something that makes more sense
-        activePeripheral?.delegate = nil
-        activePeripheral = nil
-        characteristics.removeAll(keepingCapacity: false)
-        */
         delegate?.didDisconnectFromPeripheral(peripheral: peripheral)
     }
     
@@ -354,7 +348,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         // if we've just read from the peripheral's outbox, 
         // then let the MessengerModel know
         if characteristic.uuid.uuidString == CHAR_OUTBOX_UUID {
-            delegate?.didReceiveData(peripheral, data: characteristic.value as Data?)
+            delegate?.didReadPeerOutbox(peripheral, data: characteristic.value as Data?)
         }
     }
     
@@ -380,7 +374,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         let inboxCharacteristic = CBMutableCharacteristic(type: CBUUID(string: CHAR_INBOX_UUID),
                                                      properties: .write, // inbox writable by peers
-                                                     value: "".data(using: .utf8),
+                                                     value: nil,
                                                      permissions: .readable)
         
         let outboxCharacteristic = CBMutableCharacteristic(type: CBUUID(string: CHAR_OUTBOX_UUID),
@@ -429,7 +423,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
 
                 // TODO: add message in request.value to list of received messages for MessengerModel to handle
                 //       give delegate (MessengerModel) the data in request.value
-                delegate?.didReceiveMessage(data: request.value, from: request.central.identifier)
+                delegate?.didReceiveMessage(data: request.value, sender: request.central.identifier)
                 blePeripheralManager.respond(to: request, withResult: CBATTError.Code.success) // respond to the write request positively
             } else {
                 blePeripheralManager.respond(to: request, withResult: CBATTError.Code.writeNotPermitted)

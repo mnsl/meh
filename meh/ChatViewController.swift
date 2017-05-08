@@ -44,7 +44,8 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         
     }
     func messageToString(message: Message) -> String {
-        return message.sender!.name + ": " + message.content! + "\n" as String
+        // TODO: fetch username from UUID -> username map
+        return message.sender.uuidString + ": " + message.content + "\n" as String
     }
     
     
@@ -66,14 +67,21 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     
     func messengerModel(_ model: MessengerModel, didSendMessage msg : Message?) {
         print("messenger model did send message")
+        // TODO
         return
     }
     func messengerModel(_ model: MessengerModel, didReceiveMessage msg : Message?){
         print("messenger model did recieve message")
+        // TODO
         return
     }
-    func messengerModel(_ model: MessengerModel, didAddConnectedUser user : User?) {
+    func messengerModel(_ model: MessengerModel, didAddConnectedUser user : UUID) {
         print("messenger model did add connected user")
+        // TODO
         return
+    }
+    
+    func messengerModel(_ model: MessengerModel, didDisconnectFromUser user : UUID) {
+        // TODO
     }
 }
