@@ -131,14 +131,14 @@ class MessengerModel : BLEDelegate {
     
     // overwrite outbox contents
     func overwriteOutbox(data: Data) {
-        if ble?.peripheralManager.updateValue(data, for: ble?.outbox, onSubscribedCentrals: subscribedCentrals.values.toArray()) {
+        if (self.ble?.blePeripheralManager.updateValue(data, for: (self.ble?.outbox)!, onSubscribedCentrals: self.ble?.subscribedCentrals.values.toArray()))! {
             print("successfully updated characteristic")
         } else {
             print("[ERROR] could not update own characteristic")
         }
     }
     
-    func ble(didUpdateState state: BLEState) {
+    func didUpdateState(state: BLEState) {
         // Start scanning for devices
         if state == BLEState.poweredOn {
             if !(ble?.startScanning(timeout: MessengerModel.kBLE_SCAN_TIMEOUT))! {
@@ -151,7 +151,7 @@ class MessengerModel : BLEDelegate {
         }
     }
     
-    func ble(didDiscoverPeripheral peripheral: CBPeripheral) {
+    func didDiscoverPeripheral(peripheral: CBPeripheral) {
         print("discovered peripheral: \(peripheral)")
         // Connect to first peripheral discovered
         if !(ble?.connectToPeripheral(peripheral))! {
@@ -165,7 +165,7 @@ class MessengerModel : BLEDelegate {
         // TODO: keep scanning??
     }
     
-    func ble(didConnectToPeripheral peripheral: CBPeripheral) {
+    func didConnectToPeripheral(peripheral: CBPeripheral) {
         print("connecting to peripheral \(peripheral)...")
         let user = User(uuid: peripheral.identifier, name: peripheral.name!)
         MessengerModel.shared.users?[peripheral.identifier] = user
@@ -173,11 +173,11 @@ class MessengerModel : BLEDelegate {
         // TODO: send usermap over to new 
     }
     
-    func ble(didDisconnectFromPeripheral peripheral: CBPeripheral) {
+    func didDisconnectFromPeripheral(peripheral: CBPeripheral) {
         // broadcast "lostPeer" message
     }
 
-    func ble(_ peripheral: CBPeripheral, didReceiveData data: Data?) {
+    func didReceiveData(_ peripheral: CBPeripheral, data: Data?) {
         print("receiving data...")
         if data == nil {
             print("nil data received")
@@ -189,7 +189,7 @@ class MessengerModel : BLEDelegate {
 
     }
     
-    func ble(centralDidReadOutbox central: UUID, outboxContents: Data?) {
+    func centralDidReadOutbox(central: UUID, outboxContents: Data?) {
         // Convert the JSON-formatted outbox data into an array of Messages.
         // For each message that was in the outbox when the central read it,
         // add the central's UUID to the list of centrals that have read the message.
@@ -198,7 +198,7 @@ class MessengerModel : BLEDelegate {
         // we should remove that message from the outbox.
     }
     
-    func ble(didReceiveMessage data: Data?, from: UUID) -> Data? {
+    func didReceiveMessage(data: Data?, from: UUID) -> Data? {
         // Convert the message JSON-formatted data into a Message.
         // If the recipient UUID matches that of a connected peripheral,
         // update that peripheral's inbox specifically.
@@ -210,11 +210,11 @@ class MessengerModel : BLEDelegate {
     }
     
     // if we are 
-    func ble(centralDidSubscribe central: UUID) {
+    func centralDidSubscribe(central: UUID) {
         
     }
     
-    func ble(centralDidUnsubscribe central: UUID) {
+    func centralDidUnsubscribe(central: UUID) {
         
     }
     
