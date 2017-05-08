@@ -170,8 +170,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         Timer.scheduledTimer(timeInterval: timeout, target: self, selector: #selector(BLE.scanTimeout), userInfo: nil, repeats: false)
         
         let services:[CBUUID] = [CBUUID(string: SERVICE_UUID)]
-        bleCentralManager.scanForPeripherals(withServices: nil, options: nil)
-        //bleCentralManager.scanForPeripherals(withServices: services, options: nil)
+        //bleCentralManager.scanForPeripherals(withServices: nil, options: nil)
+        bleCentralManager.scanForPeripherals(withServices: services, options: nil)
         
         return true
     }
@@ -202,7 +202,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         bleCentralManager.connect(peripheral, options: [CBConnectPeripheralOptionNotifyOnDisconnectionKey : NSNumber(value: true)])
         
         // TODO: add peripheral to map connectedPeripherals
-        
+        connectedPeripherals[peripheral.identifier] = peripheral
+
         return true
     }
     
@@ -268,7 +269,6 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         peripheral.delegate = self
         peripheral.discoverServices([CBUUID(string: SERVICE_UUID)])
         
-        connectedPeripherals[peripheral.identifier] = peripheral
         
         delegate?.didConnectToPeripheral(peripheral: peripheral)
     }
