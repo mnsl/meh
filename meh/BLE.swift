@@ -232,7 +232,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         peer.setNotifyValue(enable, for: char)
         
-        print("peer \(peer) should have notify on")
+        print("this central has subscribed to the outbox characteristic \(char) of peripheral \(peer) ")
         
     }
     
@@ -258,18 +258,19 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         if let _ = self.connectedPeripherals[peripheral.identifier] {
             return
         }
-        
 
-        print("[DEBUG] Find peripheral: \(peripheral.identifier.uuidString) RSSI: \(RSSI)")
-        print("advertisement data: \(advertisementData)")
+        //print("[DEBUG] Find peripheral: \(peripheral.identifier.uuidString) RSSI: \(RSSI)")
         
         // TODO: check if peripheral UUID matches UUID in subscribedCentrals,
         // since each peer only needs to be subscribed as a central -or- connected as a peripheral
-        print("ADVERTISEMENT DATA: ")
-        print(advertisementData)
         
+        if let serviceUUIDs = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] {
+            if serviceUUIDs.contains(CBUUID(string: SERVICE_UUID)) {
+                print("advertisement for peripheral \(peripheral) contains our service :)")
+                delegate?.didDiscoverPeripheral(peripheral: peripheral)
+            }
+        }
 
-        delegate?.didDiscoverPeripheral(peripheral: peripheral)
     }
     
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
@@ -287,7 +288,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         delegate?.didConnectToPeripheral(peripheral: peripheral)
         
-        print("current connectedPeripherals count: \(self.connectedPeripherals.count)")
+        //print("current connectedPeripherals count: \(self.connectedPeripherals.count)")
+        //print("current connectedPeripherals: \(self.connectedPeripherals)")
     }
     
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
@@ -304,6 +306,11 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     }
     
     // MARK: CBPeripheral delegate
+    func peripheral(_ peripheral: CBPeripheral, didModifyServices invalidatedServices: [CBService]) {
+        print("peripheral \(peripheral.name ?? peripheral.identifier.uuidString) did modify services: services are now \(peripheral.services)")
+        print("invalidated services (if any): \(invalidatedServices)")
+    }
+    
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         
         if error != nil {
@@ -441,9 +448,9 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         blePeripheralManager.add(service)
         print("peripheral manager about to start advertising")
-
-        let advertisementData = [CBAdvertisementDataLocalNameKey: "me$h", CBAdvertisementDataServiceUUIDsKey: [service.uuid]] as [String : Any]
         
+        let advertisementData = [CBAdvertisementDataLocalNameKey: "me$h", CBAdvertisementDataServiceUUIDsKey: [service.uuid]] as [String : Any]
+
         blePeripheralManager.startAdvertising(advertisementData)
         
     }
