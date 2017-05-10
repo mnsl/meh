@@ -63,7 +63,7 @@ class MessengerModel : BLEDelegate {
     var delegate : MessengerModelDelegate?
     
     var chats : [User: [Message]]?
-    var users : [UUID: User]? // uuid -> username map for all known users
+    var users = [UUID: User]() // uuid -> username map for all known users
     var ble: BLE?
     
     init() {
@@ -220,7 +220,8 @@ class MessengerModel : BLEDelegate {
             // Add peripheral to list of connected users.
             // Create a user object from peripheral.
             let newUser = User(uuid: peripheral.identifier, name: peripheral.name)
-            MessengerModel.shared.users?[peripheral.identifier] = newUser
+            MessengerModel.shared.users[peripheral.identifier] = newUser
+            print("current MessengerModel.shared.users: \(MessengerModel.shared.users)")
         }
         
         // TODO: keep scanning??
