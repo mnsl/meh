@@ -219,9 +219,6 @@ class MessengerModel : BLEDelegate {
             print("connected to peripheral: \(peripheral)")
             // Add peripheral to list of connected users.
             // Create a user object from peripheral.
-            let newUser = User(uuid: peripheral.identifier, name: peripheral.name)
-            MessengerModel.shared.users[peripheral.identifier] = newUser
-            print("current MessengerModel.shared.users: \(MessengerModel.shared.users)")
         }
         
         // TODO: keep scanning??
@@ -229,14 +226,17 @@ class MessengerModel : BLEDelegate {
     
     func didConnectToPeripheral(peripheral: CBPeripheral) {
         print("connecting to peripheral \(peripheral)...")
+        let newUser = User(uuid: peripheral.identifier, name: peripheral.name)
+        MessengerModel.shared.users[peripheral.identifier] = newUser
         delegate?.didAddConnectedUser(.shared, user: peripheral.identifier)
     }
     
     func didDisconnectFromPeripheral(peripheral: CBPeripheral) {
         // TODO: broadcast "lostPeer" message
+        // Remove peripheral for Messenger Model's user list.
         print("disconnected from peripheral \(peripheral)...")
-
-        // view controller delegate should update list of connected users
+        MessengerModel.shared.users.removeValue(forKey: peripheral.identifier)
+        // Tell view controller delegate to update list of connected users
         delegate?.didDisconnectFromUser(.shared, user: peripheral.identifier)
 
     }
@@ -282,11 +282,14 @@ class MessengerModel : BLEDelegate {
     func centralDidSubscribe(central: UUID) {
         print("central \(central) just subscribed")
         // TODO: update UUID -> username map somehow... central doesn't have a "name"
+        let newUser = User(uuid: central, name: "TBD")
+        MessengerModel.shared.users[central] = newUser
         delegate?.didAddConnectedUser(.shared, user: central)
     }
     
     func centralDidUnsubscribe(central: UUID) {
         print("central \(central) just unsubscribed")
+        MessengerModel.shared.users.removeValue(forKey: central)
         delegate?.didDisconnectFromUser(.shared, user: central)
     }
     

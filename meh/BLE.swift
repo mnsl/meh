@@ -287,7 +287,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         delegate?.didConnectToPeripheral(peripheral: peripheral)
         
-        print("current connectedPeripherals: \(self.connectedPeripherals)")
+        print("current connectedPeripherals count: \(self.connectedPeripherals.count)")
     }
     
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
@@ -338,7 +338,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
             // Desired service has been found! Now start discovering characteristics.
             for service in peripheral.services! {
                 let theCharacteristics = [CBUUID(string: CHAR_INBOX_UUID), CBUUID(string: CHAR_OUTBOX_UUID)]
-                
+                self.delegate?.didConnectToPeripheral(peripheral: peripheral)
+                //            print("current MessengerModel.shared.users: \(MessengerModel.shared.users)")
                 peripheral.discoverCharacteristics(theCharacteristics, for: service)
             }
         }
@@ -441,7 +442,9 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         blePeripheralManager.add(service)
         print("peripheral manager about to start advertising")
 
-        blePeripheralManager.startAdvertising([CBAdvertisementDataLocalNameKey: "testing", CBAdvertisementDataServiceUUIDsKey: service.uuid])
+        let advertisementData = [CBAdvertisementDataLocalNameKey: "me$h", CBAdvertisementDataServiceUUIDsKey: [service.uuid]] as [String : Any]
+        
+        blePeripheralManager.startAdvertising(advertisementData)
         
     }
     
@@ -456,6 +459,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         // TODO: check if central UUID matches UUID in connectedPeripherals,
         // since each peer only needs to be subscribed as a central -or- connected as a peripheral
+        self.delegate?.centralDidSubscribe(central: central.identifier)
         print("\(central) just subscribed to characteristic \(characteristic)")
         
     }
@@ -464,6 +468,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         // if characteristic is outbox,
         // remove central from subscribedCentrals
         // (and announce connection lost??)
+        self.delegate?.centralDidUnsubscribe(central: central.identifier)
         print("\(central) just unsubscribed from characteristic \(characteristic)")
 
     }
