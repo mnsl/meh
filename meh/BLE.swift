@@ -259,13 +259,16 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
             return
         }
         
-        print("[DEBUG] Find peripheral: \(peripheral.identifier.uuidString) RSSI: \(RSSI) NAME: \(peripheral.name)")
+
+        print("[DEBUG] Find peripheral: \(peripheral.identifier.uuidString) RSSI: \(RSSI)")
+        print("advertisement data: \(advertisementData)")
         
         // TODO: check if peripheral UUID matches UUID in subscribedCentrals,
         // since each peer only needs to be subscribed as a central -or- connected as a peripheral
         print("ADVERTISEMENT DATA: ")
         print(advertisementData)
         
+
         delegate?.didDiscoverPeripheral(peripheral: peripheral)
     }
     
@@ -357,8 +360,9 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
                 peerInboxes[peripheral.identifier] = characteristic
             } else if charUUID == CHAR_OUTBOX_UUID {
                 print("discovered outbox characteristic for peripheral \(peripheral.name)")
-
                 peerOutboxes[peripheral.identifier] = characteristic
+            } else {
+                print("charUUID \(charUUID) did not match inbox or outbox char UUID")
             }
         }
         
