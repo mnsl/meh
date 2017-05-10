@@ -219,9 +219,6 @@ class MessengerModel : BLEDelegate {
             print("connected to peripheral: \(peripheral)")
             // Add peripheral to list of connected users.
             // Create a user object from peripheral.
-            let newUser = User(uuid: peripheral.identifier, name: peripheral.name)
-            MessengerModel.shared.users[peripheral.identifier] = newUser
-            //print("current MessengerModel.shared.users: \(MessengerModel.shared.users)")
         }
         
         // TODO: keep scanning??
@@ -236,6 +233,7 @@ class MessengerModel : BLEDelegate {
     
     func didDisconnectFromPeripheral(peripheral: CBPeripheral) {
         // TODO: broadcast "lostPeer" message
+        // Remove peripheral for Messenger Model's user list.
         print("disconnected from peripheral \(peripheral)...")
 
         // view controller delegate should update list of connected users
