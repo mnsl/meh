@@ -260,6 +260,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         }
         
         print("[DEBUG] Find peripheral: \(peripheral.identifier.uuidString) RSSI: \(RSSI)")
+        print("advertisement data: \(advertisementData)")
         
         // TODO: check if peripheral UUID matches UUID in subscribedCentrals,
         // since each peer only needs to be subscribed as a central -or- connected as a peripheral
@@ -273,7 +274,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
             }
         }
 
-        print("peripheral \(peripheral.name) was discovered but did not have the correct service: services were \(peripheral.services) instead")
+        print("peripheral \(peripheral.name ?? peripheral.identifier.uuidString) was discovered but did not have the correct service: services were \(peripheral.services) instead")
     }
     
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
@@ -341,8 +342,9 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
                 peerInboxes[peripheral.identifier] = characteristic
             } else if charUUID == CHAR_OUTBOX_UUID {
                 print("discovered outbox characteristic for peripheral \(peripheral.name)")
-
                 peerOutboxes[peripheral.identifier] = characteristic
+            } else {
+                print("charUUID \(charUUID) did not match inbox or outbox char UUID")
             }
         }
         
@@ -421,7 +423,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         blePeripheralManager.add(service)
         print("peripheral manager about to start advertising")
 
-        blePeripheralManager.startAdvertising([CBAdvertisementDataLocalNameKey: ["testing"], CBAdvertisementDataServiceUUIDsKey: [service.uuid]])
+        blePeripheralManager.startAdvertising([CBAdvertisementDataLocalNameKey: "testing", CBAdvertisementDataServiceUUIDsKey: service.uuid])
         
     }
     
