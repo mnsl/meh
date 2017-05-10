@@ -259,21 +259,14 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
             return
         }
         
-        print("[DEBUG] Find peripheral: \(peripheral.identifier.uuidString) RSSI: \(RSSI)")
+        print("[DEBUG] Find peripheral: \(peripheral.identifier.uuidString) RSSI: \(RSSI) NAME: \(peripheral.name)")
         
         // TODO: check if peripheral UUID matches UUID in subscribedCentrals,
         // since each peer only needs to be subscribed as a central -or- connected as a peripheral
+        print("ADVERTISEMENT DATA: ")
+        print(advertisementData)
         
-        if let services = peripheral.services {
-            for service in services {
-                if service.uuid == CBUUID(string: SERVICE_UUID) {
-                    delegate?.didDiscoverPeripheral(peripheral: peripheral)
-                    return
-                }
-            }
-        }
-
-        print("peripheral \(peripheral.name) was discovered but did not have the correct service: services were \(peripheral.services) instead")
+        delegate?.didDiscoverPeripheral(peripheral: peripheral)
     }
     
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
@@ -317,11 +310,34 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         print("[DEBUG] Found services \(peripheral.services!) for peripheral: \(peripheral.name)")
         
+        // Check to see if services are what we want.
+        var found_service = false
+        let services = peripheral.services
+        if services != nil {
+            print("in services if loop")
+            for service in services! {
+                print("service:")
+                print(service)
+                if service.uuid == CBUUID(string: SERVICE_UUID) {
+                    found_service = true
+                } else {
+                    // If the service UUID does not match the desired UUID, then compare what it is to what want.
+                    print("compare!")
+                    print(service.uuid.uuidString)
+                    print(SERVICE_UUID)
+                }
+            }
+        }
         
-        for service in peripheral.services! {
-            let theCharacteristics = [CBUUID(string: CHAR_INBOX_UUID), CBUUID(string: CHAR_OUTBOX_UUID)]
-            
-            peripheral.discoverCharacteristics(theCharacteristics, for: service)
+        if !(found_service) {
+        print("peripheral \(peripheral.name) was discovered but did not have the correct service: services were \(peripheral.services) instead")
+        } else {
+            // Desired service has been found! Now start discovering characteristics.
+            for service in peripheral.services! {
+                let theCharacteristics = [CBUUID(string: CHAR_INBOX_UUID), CBUUID(string: CHAR_OUTBOX_UUID)]
+                
+                peripheral.discoverCharacteristics(theCharacteristics, for: service)
+            }
         }
     }
     
@@ -421,7 +437,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         blePeripheralManager.add(service)
         print("peripheral manager about to start advertising")
 
-        blePeripheralManager.startAdvertising([CBAdvertisementDataLocalNameKey: ["testing"], CBAdvertisementDataServiceUUIDsKey: [service.uuid]])
+        blePeripheralManager.startAdvertising([CBAdvertisementDataLocalNameKey: "testing", CBAdvertisementDataServiceUUIDsKey: service.uuid])
         
     }
     
