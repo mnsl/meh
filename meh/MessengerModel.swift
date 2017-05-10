@@ -60,7 +60,7 @@ class MessengerModel : BLEDelegate {
     
     static let shared = MessengerModel()
     
-    var delegate : MessengerModelDelegate?
+    var delegates = [MessengerModelDelegate]()
     
     var chats : [User: [Message]]?
     var users = [UUID: User]() // uuid -> username map for all known users
@@ -229,7 +229,9 @@ class MessengerModel : BLEDelegate {
     
     func didConnectToPeripheral(peripheral: CBPeripheral) {
         print("connecting to peripheral \(peripheral)...")
-        delegate?.didAddConnectedUser(.shared, user: peripheral.identifier)
+        for delegate in delegates {
+            delegate.didAddConnectedUser(.shared, user: peripheral.identifier)
+        }
     }
     
     func didDisconnectFromPeripheral(peripheral: CBPeripheral) {
@@ -237,8 +239,9 @@ class MessengerModel : BLEDelegate {
         print("disconnected from peripheral \(peripheral)...")
 
         // view controller delegate should update list of connected users
-        delegate?.didDisconnectFromUser(.shared, user: peripheral.identifier)
-
+        for delegate in delegates {
+            delegate.didDisconnectFromUser(.shared, user: peripheral.identifier)
+        }
     }
     
     func centralDidReadOutbox(central: UUID, outboxContents: Data?) {
@@ -261,7 +264,9 @@ class MessengerModel : BLEDelegate {
         let message = jsonDataToMessage(data: data!)
         if UUID(uuid: (message?.recipient.uuid)!) == UIDevice.current.identifierForVendor! {
             print("message received was intended for this user")
-            delegate?.didReceiveMessage(.shared, msg: message)
+            for delegate in delegates {
+                delegate.didReceiveMessage(.shared, msg: message)
+            }
         } else {
             sendMessage(message: message!, exclude: sender)
         }
@@ -275,19 +280,25 @@ class MessengerModel : BLEDelegate {
         // for msg in messages parsed from data: call messengerModel(_ model: shared, didReceiveMessage: msg)
 
         for message in messages! {
-            delegate?.didReceiveMessage(.shared, msg: message)
+            for delegate in delegates {
+                delegate.didReceiveMessage(.shared, msg: message)
+            }
         }
     }
     
     func centralDidSubscribe(central: UUID) {
         print("central \(central) just subscribed")
         // TODO: update UUID -> username map somehow... central doesn't have a "name"
-        delegate?.didAddConnectedUser(.shared, user: central)
+        for delegate in delegates {
+            delegate.didAddConnectedUser(.shared, user: central)
+        }
     }
     
     func centralDidUnsubscribe(central: UUID) {
         print("central \(central) just unsubscribed")
-        delegate?.didDisconnectFromUser(.shared, user: central)
+        for delegate in delegates {
+            delegate.didDisconnectFromUser(.shared, user: central)
+        }
     }
     
     /**

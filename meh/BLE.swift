@@ -253,7 +253,6 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         delegate?.didUpdateState(state: BLEState(rawValue: central.state.rawValue)!)
     }
     
-    // TODO: code from Anteater, need to fix
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         if let _ = self.connectedPeripherals[peripheral.identifier] {
             return

@@ -34,6 +34,8 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
         tableView.dataSource = self
         tableView.allowsMultipleSelection = true
         tableView.beginUpdates()
+        
+        MessengerModel.shared.delegates.append(self)
 
         // NOTE: in the beginning, onlineUsers is nil, because we have not been able to identify any users nearby.
         if UserListViewController.onlineUsersArray.count == 0 {
@@ -49,12 +51,14 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
 
         }
         tableView.endUpdates()
+        
+        
     }
     
     func addUsername(username:String) {
         let cell_to_fill = tableView.dequeueReusableCell(withIdentifier: "Username")
         print("cell_to_fill")
-        print(cell_to_fill!)
+        print(cell_to_fill)
         cell_to_fill?.textLabel?.text = username
     }
 
@@ -101,14 +105,14 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     }
 
     func didAddConnectedUser(_ model: MessengerModel, user: UUID) {
+        print("[UserListViewController] added connected user with UUID \(user)")
         UserListViewController.onlineUsersArray = Array(MessengerModel.shared.users.values)
         tableView.beginUpdates()
-        if MessengerModel.shared.users[user] != nil {
-            let user = MessengerModel.shared.users[user]
-            addUsername(username: (user?.name)!)
-    } else {
-        addUsername(username: (user.uuidString))
-    }
+        if let userWithName = MessengerModel.shared.users[user] {
+            addUsername(username: (userWithName.name)!)
+        } else {
+            addUsername(username: (user.uuidString))
+        }
         tableView.endUpdates()
     }
     

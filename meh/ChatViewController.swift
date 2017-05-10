@@ -37,6 +37,9 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         
 //        let messagesToLoad = MessengerModel.shared.chats[currentMessager]
 //        loadMessages(messages: messagesToLoad)
+        
+        MessengerModel.shared.delegates.append(self)
+
     }
     
     func clearChatDisplay() {
