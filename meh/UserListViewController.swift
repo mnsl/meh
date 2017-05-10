@@ -101,10 +101,10 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     }
 
     func didAddConnectedUser(_ model: MessengerModel, user: UUID) {
-        UserListViewController.onlineUsersArray = Array(MessengerModel.shared.users!.values)
+        UserListViewController.onlineUsersArray = Array(MessengerModel.shared.users.values)
         tableView.beginUpdates()
-        if MessengerModel.shared.users?[user] != nil {
-            let user = MessengerModel.shared.users?[user]
+        if MessengerModel.shared.users[user] != nil {
+            let user = MessengerModel.shared.users[user]
             addUsername(username: (user?.name)!)
     } else {
         addUsername(username: (user.uuidString))

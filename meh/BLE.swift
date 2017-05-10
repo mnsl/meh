@@ -10,6 +10,8 @@
 
 import Foundation
 import CoreBluetooth
+import UIKit
+
 
 public enum BLEState : Int, CustomStringConvertible {
     case unknown
@@ -141,7 +143,6 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         self.data = NSMutableData()
         self.inbox = CBMutableCharacteristic(type: CBUUID(string: CHAR_INBOX_UUID), properties: CBCharacteristicProperties.write, value: nil, permissions: CBAttributePermissions.writeable)
         self.outbox = CBMutableCharacteristic(type: CBUUID(string: CHAR_OUTBOX_UUID), properties: CBCharacteristicProperties.read, value: nil, permissions: CBAttributePermissions.readable)
-        setupService() // <- is this the right place?
         
     }
     
@@ -170,8 +171,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         Timer.scheduledTimer(timeInterval: timeout, target: self, selector: #selector(BLE.scanTimeout), userInfo: nil, repeats: false)
         
         let services:[CBUUID] = [CBUUID(string: SERVICE_UUID)]
-        //bleCentralManager.scanForPeripherals(withServices: nil, options: nil)
-        bleCentralManager.scanForPeripherals(withServices: services, options: nil)
+        bleCentralManager.scanForPeripherals(withServices: nil, options: nil)
+        //bleCentralManager.scanForPeripherals(withServices: services, options: nil)
         
         return true
     }
@@ -224,10 +225,14 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     // enable notifications for updates to given peripheral(as specified by the UUID)'s outbox characteristic
     func enableNotifications(enable: Bool, uuid: UUID) {
         
+        print("enabling notifications for peer with UUID \(uuid)")
+        
         guard let char = peerOutboxes[uuid] else { return }
         guard let peer = connectedPeripherals[uuid] else { return }
         
         peer.setNotifyValue(enable, for: char)
+        
+        print("peer \(peer) should have notify on")
         
     }
     
@@ -250,11 +255,25 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     
     // TODO: code from Anteater, need to fix
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
+        if let _ = self.connectedPeripherals[peripheral.identifier] {
+            return
+        }
+        
         print("[DEBUG] Find peripheral: \(peripheral.identifier.uuidString) RSSI: \(RSSI)")
         
         // TODO: check if peripheral UUID matches UUID in subscribedCentrals,
         // since each peer only needs to be subscribed as a central -or- connected as a peripheral
-        delegate?.didDiscoverPeripheral(peripheral: peripheral)
+        
+        if let services = peripheral.services {
+            for service in services {
+                if service.uuid == CBUUID(string: SERVICE_UUID) {
+                    delegate?.didDiscoverPeripheral(peripheral: peripheral)
+                    return
+                }
+            }
+        }
+
+        print("peripheral \(peripheral.name) was discovered but did not have the correct service: services were \(peripheral.services) instead")
     }
     
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
@@ -271,11 +290,14 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         
         delegate?.didConnectToPeripheral(peripheral: peripheral)
+        
+        print("current connectedPeripherals: \(self.connectedPeripherals)")
     }
     
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         
-        var text = "[DEBUG] Disconnected from peripheral: \(peripheral.identifier.uuidString)"
+        var text = "[DEBUG] Disconnected from peripheral: \(peripheral.name)"
+        self.connectedPeripherals[peripheral.identifier] = nil
         
         if error != nil {
             text += ". Error: \(error!.localizedDescription)"
@@ -293,7 +315,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
             return
         }
         
-        print("[DEBUG] Found services for peripheral: \(peripheral.identifier.uuidString)")
+        print("[DEBUG] Found services \(peripheral.services!) for peripheral: \(peripheral.name)")
         
         
         for service in peripheral.services! {
@@ -315,8 +337,11 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         for characteristic in service.characteristics! {
             let charUUID = characteristic.uuid.uuidString
             if charUUID == CHAR_INBOX_UUID {
+                print("discovered inbox characteristic for peripheral \(peripheral.name)")
                 peerInboxes[peripheral.identifier] = characteristic
             } else if charUUID == CHAR_OUTBOX_UUID {
+                print("discovered outbox characteristic for peripheral \(peripheral.name)")
+
                 peerOutboxes[peripheral.identifier] = characteristic
             }
         }
@@ -363,8 +388,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
         if peripheral.state == .poweredOn {
             print("[DEBUG] peripheral is powered on!")
-            blePeripheralManager.startAdvertising(peripheralData) // for now, peripheralData is empty (in future, maybe should be a list of reachable peers)
-            print("[DEBUG] started advertisting")
+            setupService() // for now, peripheralData is empty (in future, maybe should be a list of reachable peers)
+            print("[DEBUG] started advertising")
         } else if peripheral.state == .poweredOff {
             print("[DEBUG] peripheral is powered OFF!")
             blePeripheralManager.stopAdvertising()
@@ -394,8 +419,15 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         service.characteristics = [inboxCharacteristic, outboxCharacteristic]
         
         blePeripheralManager.add(service)
-        blePeripheralManager.startAdvertising([CBAdvertisementDataServiceUUIDsKey: [service.uuid]])
+        print("peripheral manager about to start advertising")
+
+        blePeripheralManager.startAdvertising([CBAdvertisementDataLocalNameKey: ["testing"], CBAdvertisementDataServiceUUIDsKey: [service.uuid]])
         
+    }
+    
+    func peripheralManagerDidStartAdvertising(_ peripheral: CBPeripheralManager, error: Error?) {
+        print("peripheral manager did start advertising")
+        print("this device's uuid: \(UIDevice.current.identifierForVendor!)")
     }
     
     func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didSubscribeTo characteristic: CBCharacteristic) {

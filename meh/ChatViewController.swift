@@ -56,7 +56,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         
     }
     func messageToString(message: Message) -> String {
-        let sender = MessengerModel.shared.users?[message.sender]
+        let sender = MessengerModel.shared.users[message.sender]
         return (sender?.name)! + ": " + message.content + "\n" as String
     }
     
