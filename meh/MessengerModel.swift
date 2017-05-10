@@ -226,6 +226,8 @@ class MessengerModel : BLEDelegate {
     
     func didConnectToPeripheral(peripheral: CBPeripheral) {
         print("connecting to peripheral \(peripheral)...")
+        let newUser = User(uuid: peripheral.identifier, name: peripheral.name)
+        MessengerModel.shared.users[peripheral.identifier] = newUser
         for delegate in delegates {
             delegate.didAddConnectedUser(.shared, user: peripheral.identifier)
         }
@@ -235,7 +237,9 @@ class MessengerModel : BLEDelegate {
         // TODO: broadcast "lostPeer" message
         // Remove peripheral for Messenger Model's user list.
         print("disconnected from peripheral \(peripheral)...")
-
+        MessengerModel.shared.users.removeValue(forKey: peripheral.identifier)
+        // Tell view controller delegate to update list of connected users
+        
         // view controller delegate should update list of connected users
         for delegate in delegates {
             delegate.didDisconnectFromUser(.shared, user: peripheral.identifier)
@@ -287,6 +291,8 @@ class MessengerModel : BLEDelegate {
     func centralDidSubscribe(central: UUID) {
         print("central \(central) just subscribed")
         // TODO: update UUID -> username map somehow... central doesn't have a "name"
+        let newUser = User(uuid: central, name: "TBD")
+        MessengerModel.shared.users[central] = newUser
         for delegate in delegates {
             delegate.didAddConnectedUser(.shared, user: central)
         }
@@ -294,6 +300,7 @@ class MessengerModel : BLEDelegate {
     
     func centralDidUnsubscribe(central: UUID) {
         print("central \(central) just unsubscribed")
+        MessengerModel.shared.users.removeValue(forKey: central)
         for delegate in delegates {
             delegate.didDisconnectFromUser(.shared, user: central)
         }
