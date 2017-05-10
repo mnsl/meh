@@ -232,7 +232,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         peer.setNotifyValue(enable, for: char)
         
-        print("peer \(peer) should have notify on")
+        print("this central should have subscribed to the outbox characteristic \(char) of peripheral \(peer) ")
         
     }
     
