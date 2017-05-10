@@ -221,7 +221,7 @@ class MessengerModel : BLEDelegate {
             // Create a user object from peripheral.
             let newUser = User(uuid: peripheral.identifier, name: peripheral.name)
             MessengerModel.shared.users[peripheral.identifier] = newUser
-            print("current MessengerModel.shared.users: \(MessengerModel.shared.users)")
+            //print("current MessengerModel.shared.users: \(MessengerModel.shared.users)")
         }
         
         // TODO: keep scanning??
