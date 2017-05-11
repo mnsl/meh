@@ -16,27 +16,34 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     @IBOutlet weak var messageInputField: UITextView!
     @IBOutlet weak var sendButton: UIButton!
     
+    var chatMembers = [String]()
+    var selected = Array(UserListViewController.selectedUsers)
+    let selectedUser = selected[0]
+    
     // TODO(quacht): Preliminary character limit... will update after testing what is the maximum you can write to a characteristic.
     let message_character_limit = 10000;
    
     override func viewDidLoad() {
         super.viewDidLoad()
-        var chatMembers = [String]()
-        var selected = Array(UserListViewController.selectedUsers)
+        
+        // Determine who the user is chatting with.
         if selected.count > 0 {
-        for i in 0...(selected.count-1) {
-            chatMembers.append(selected[i].name!)
-        }
+            for i in 0...(selected.count-1) {
+                chatMembers.append(selected[i].name!)
+            }
+        // TODO(quacht): remove
+        chatMembers = ["Tina"]
         self.title =  chatMembers.joined(separator: ", ")
         }
         print("chat view loaded")
         // Load messages from the messenger model and display them.
         clearChatDisplay()
         
-        // Determine who the user is chatting with.
+        // Load old messages (currently assumes 1:1 messaging)
+        if let old_messages = MessengerModel.shared.chats?[selectedUser] {
+            loadMessages(messages: old_messages)
+        }
         
-//        let messagesToLoad = MessengerModel.shared.chats[currentMessager]
-//        loadMessages(messages: messagesToLoad)
         
         // Set this view controller to be the delegate of MessengerModel that keeps track of the messages being sent between you and others on the network.
         MessengerModel.shared.delegates.append(self)
@@ -47,19 +54,20 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         chatTextField.text = "";
     }
     
-    func addMessageToDisplay(message: String) {
-        chatTextField.text = chatTextField.text + SettingsModel.username! + ": "
-            message + "\n"
+    func addMessageToDisplay(message: Message) {
+        let string_repr = messageToString(message: message)
+        chatTextField.text = chatTextField.text + string_repr
     }
     
     func loadMessages(messages: [Message]){
         for message in messages {
-            let string_repr = messageToString(message: message)
-            addMessageToDisplay(message: string_repr)
+            addMessageToDisplay(message: message)
         }
-        
     }
+    
+    
     func messageToString(message: Message) -> String {
+        // Given a message object, return string representation to be printed to the chat.
         let sender = MessengerModel.shared.users[message.sender]
         return (sender?.name)! + ": " + message.content + "\n" as String
     }
@@ -74,26 +82,34 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         // Get message from the message input field
         let message = messageInputField.text;
         print("sending \"", message as Any, "\"")
-        chatTextField.text = chatTextField.text +
-            message!
-        // Send message
-        // TODO: figure out how to get the recipient UUID
-        // MessengerModel.shared.sendMessage(message: message, uuid: recipientUUID)
+        
+        MessengerModel.shared.sendMessage(message: message, uuid: selectedUser.uuid)
     }
     
     // MARK: MessengerModelDelegate functions
     func didSendMessage(_ model: MessengerModel, msg: Message?) {
-        // TODO
+        // Once we recieve confirmation from the Messenger model that a message has been sent, we display the message we sent.
+        if msg != nil {
+        addMessageToDisplay(message: msg!)
+        } else {
+            print("Sent message is nil! --> not going to display in chat.")
+        }
     }
     
     func didReceiveMessage(_ model: MessengerModel, msg: Message?) {
-        // TODO
+        if msg != nil {
+            addMessageToDisplay(message: msg!)
+        } else {
+            print("Sent message is nil! --> not going to display in chat.")
+        }
     }
     
     func didAddConnectedUser(_ model: MessengerModel, user: UUID) {
-        // TODO
+        // Do nothing
+        return
     }
     
     func didDisconnectFromUser(_ model: MessengerModel, user: UUID) {
-        // TODO
+        // Do nothing
+        return
     }}
