@@ -18,7 +18,6 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     
     var chatMembers = [String]()
     var selected = Array(UserListViewController.selectedUsers)
-    let selectedUser = selected[0]
     
     // TODO(quacht): Preliminary character limit... will update after testing what is the maximum you can write to a characteristic.
     let message_character_limit = 10000;
@@ -31,7 +30,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
             for i in 0...(selected.count-1) {
                 chatMembers.append(selected[i].name!)
             }
-        // TODO(quacht): remove
+        // TODO(quacht): remove line below
         chatMembers = ["Tina"]
         self.title =  chatMembers.joined(separator: ", ")
         }
@@ -39,8 +38,10 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         // Load messages from the messenger model and display them.
         clearChatDisplay()
         
-        // Load old messages (currently assumes 1:1 messaging)
-        if let old_messages = MessengerModel.shared.chats?[selectedUser] {
+        
+        // Load old messages (currently assumes 1:1 messaging) 
+        // TODO(quacht): change this when we move towards group messaging.
+        if let old_messages = MessengerModel.shared.chats?[selected[0]] {
             loadMessages(messages: old_messages)
         }
         
@@ -83,7 +84,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         let message = messageInputField.text;
         print("sending \"", message as Any, "\"")
         
-        MessengerModel.shared.sendMessage(message: message, uuid: selectedUser.uuid)
+        MessengerModel.shared.sendMessage(message: message!, recipientUUID: selected[0].uuid)
     }
     
     // MARK: MessengerModelDelegate functions
