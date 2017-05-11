@@ -162,6 +162,7 @@ class MessengerModel : BLEDelegate {
         // else stick the message in this node's peripheral's outbox.
         
         let message = Message(content: message, sender: UIDevice.current.identifierForVendor!, date: Date(), recipient: recipientUUID)
+        // TODO(quacht): update the chat dictionary (so that chat history can show up accordingly on chat view controller)
         sendMessage(message: message, exclude: UIDevice.current.identifierForVendor!)
     }
     
