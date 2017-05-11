@@ -205,7 +205,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "47"
             endingLineNumber = "47"
-            landmarkName = "addMessageToDisplay(message:)"
+            landmarkName = "clearChatDisplay()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -301,7 +301,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "59"
             endingLineNumber = "59"
-            landmarkName = "messageToString(message:)"
+            landmarkName = "loadMessages(messages:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -317,7 +317,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "100"
             endingLineNumber = "100"
-            landmarkName = "didReceiveMessage(_:msg:)"
+            landmarkName = "didSendMessage(_:msg:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -328,11 +328,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "meh/BLE.swift"
-            timestampString = "516122775.292712"
+            timestampString = "516126852.553586"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "314"
-            endingLineNumber = "314"
+            startingLineNumber = "311"
+            endingLineNumber = "311"
             landmarkName = "peripheral(_:didModifyServices:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -344,13 +344,13 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "meh/MessengerModel.swift"
-            timestampString = "516126197.228885"
+            timestampString = "516126852.553586"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "287"
-            endingLineNumber = "287"
-            landmarkName = "MessengerModel"
-            landmarkType = "3">
+            startingLineNumber = "281"
+            endingLineNumber = "281"
+            landmarkName = "didReadPeerOutbox(_:data:)"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

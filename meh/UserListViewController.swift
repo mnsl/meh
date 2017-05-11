@@ -9,14 +9,13 @@
 import Foundation
 import UIKit
 
-// TODO: Set this view controller to be the delegate of some model that keeps track of who is on the network, and who you already know.
+
 class UserListViewController: UIViewController, UITableViewDataSource, MessengerModelDelegate, UITableViewDelegate {
     @IBOutlet weak var tableView: UITableView!
     @IBOutlet weak var startchat: UIButton!
     
     var onlineUsers = MessengerModel.shared.users
     public static var onlineUsersArray: Array<User> = []
-    // TODO(quacht): pull onlineUsers from the messenger model
     public static var selectedUsers: Set = Set<User>()
     
     // MARK: - UITableViewDataSource
@@ -30,11 +29,13 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
         tableView.delegate = self
         tableView.dataSource = self
         tableView.allowsMultipleSelection = true
         tableView.beginUpdates()
         
+        // Set this view controller to be the delegate of some model that keeps track of who is on the network, and who you already know.
         MessengerModel.shared.delegates.append(self)
 
         // NOTE: in the beginning, onlineUsers is nil, because we have not been able to identify any users nearby.
@@ -57,8 +58,6 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     
     func addUsername(username:String) {
         let cell_to_fill = tableView.dequeueReusableCell(withIdentifier: "Username")
-        print("cell_to_fill")
-        print(cell_to_fill)
         cell_to_fill?.textLabel?.text = username
     }
 
@@ -95,13 +94,19 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
         UserListViewController.selectedUsers.remove(deselectedUser);
     }
     
+    // TODO(quacht): if didRecieveMessage goes provides visual indication of a message being received, also turn off that
+    // indication once a message has been checked.
+    
     // MARK: MessengerModelDelegate functions
     func didSendMessage(_ model: MessengerModel, msg: Message?) {
-        // TODO
+        // Nothing
+        return
     }
     
     func didReceiveMessage(_ model: MessengerModel, msg: Message?) {
-        // TODO
+        // TODO: bold the text of the user in the userlist
+        // Maintain state of what messages have been unread?
+        return
     }
 
     func didAddConnectedUser(_ model: MessengerModel, user: UUID) {
@@ -117,7 +122,17 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     }
     
     func didDisconnectFromUser(_ model: MessengerModel, user: UUID) {
-        // TODO
+        print("[UserListViewController]  disconnected form user with UUID \(user)")
+        // Update onlineUsersArray
+        for i in 0...(UserListViewController.onlineUsersArray.count) {
+            if (UserListViewController.onlineUsersArray[i].uuid == user) {
+                print("Found disconnected user to remove from the user list.")
+                // Update table view.
+                tableView.deleteRows(at: [IndexPath(row: i, section: 0)], with: UITableViewRowAnimation.automatic)
+
+            }
+        }
+        
     }
     
     

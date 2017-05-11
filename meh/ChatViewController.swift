@@ -38,6 +38,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
 //        let messagesToLoad = MessengerModel.shared.chats[currentMessager]
 //        loadMessages(messages: messagesToLoad)
         
+        // Set this view controller to be the delegate of MessengerModel that keeps track of the messages being sent between you and others on the network.
         MessengerModel.shared.delegates.append(self)
 
     }
