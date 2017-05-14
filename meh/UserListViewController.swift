@@ -90,12 +90,12 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     // indication once a message has been checked.
     
     // MARK: MessengerModelDelegate functions
-    func didSendMessage(_ model: MessengerModel, msg: Message?) {
+    func didSendMessage(_ model: MessengerModel, msg: UserMessage?) {
         // Nothing
         return
     }
     
-    func didReceiveMessage(_ model: MessengerModel, msg: Message?) {
+    func didReceiveMessage(_ model: MessengerModel, msg: UserMessage?) {
         // TODO: bold the text of the user in the userlist
         // Maintain state of what messages have been unread?
         return

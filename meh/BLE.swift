@@ -68,8 +68,11 @@ protocol BLEDelegate {
     
     func sendMessage(message: String, recipient: String)
     func writeToInbox(data: Data, username: String) -> Bool
-    func addMessageToOutbox(message: Message) -> Bool
+    func addMessageToOutbox(message: UserMessage) -> Bool
     func overwriteOutbox(data: Data?)
+    
+    func jsonDataToMessage(data: Data) -> Message?
+    func metadataToJSONData() -> Data?
 
 }
 
@@ -101,7 +104,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     let SERVICE_UUID = "713D0000-503E-4C75-BA94-3148F18D941E"
     let CHAR_INBOX_UUID = "713D0002-503E-4C75-BA94-3148F18D941E"
     let CHAR_OUTBOX_UUID = "713D0003-503E-4C75-BA94-3148F18D941E"
-    
+    let CHAR_METADATA_UUID = "713D0004-503E-4C75-BA94-3148F18D941E"
+
     var delegate: BLEDelegate?
     
     
@@ -111,6 +115,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     
     public var peerInboxes = [String: CBCharacteristic]()
     public var peerOutboxes = [String: CBCharacteristic]()
+    public var peerMetadatas = [String: CBCharacteristic]()
     
     private      var data:             NSMutableData? // <- not sure if this should be kept
     public var connectedPeripherals = [String: CBPeripheral]()
@@ -120,6 +125,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     public var subscribedCentrals = [String: CBCentral]()
     public var inbox : CBMutableCharacteristic!
     public var outbox : CBMutableCharacteristic!
+    public var metadata : CBMutableCharacteristic!
+
     
     private var peripheralData: [String: AnyObject]?
     var services: [CBMutableService]!
@@ -135,6 +142,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         self.blePeripheralManager = CBPeripheralManager(delegate: self, queue: nil)
         self.data = NSMutableData()
         
+        setupService()
     }
     
     @objc private func scanTimeout() {
@@ -343,7 +351,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         } else {
             // Desired service has been found! Now start discovering characteristics.
             for service in peripheral.services! {
-                let theCharacteristics = [CBUUID(string: CHAR_INBOX_UUID), CBUUID(string: CHAR_OUTBOX_UUID)]
+                let theCharacteristics = [CBUUID(string: CHAR_INBOX_UUID), CBUUID(string: CHAR_OUTBOX_UUID), CBUUID(string: CHAR_METADATA_UUID)]
                 self.delegate?.didConnectToPeripheral(peripheral: peripheral)
                 //            print("current MessengerModel.shared.users: \(MessengerModel.shared.users)")
                 peripheral.discoverCharacteristics(theCharacteristics, for: service)
@@ -361,21 +369,40 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
 
         print("[DEBUG] Found characteristics for peripheral: \(peerUsername)")
         
+        var peerInbox: CBCharacteristic?
+        var peerOutbox: CBCharacteristic?
+        var peerMetadataChar: CBCharacteristic?
         
         for characteristic in service.characteristics! {
             let charUUID = characteristic.uuid.uuidString
             if charUUID == CHAR_INBOX_UUID {
                 print("discovered inbox characteristic for peripheral \(peerUsername)")
-                peerInboxes[peerUsername] = characteristic
+                peerInbox = characteristic
             } else if charUUID == CHAR_OUTBOX_UUID {
                 print("discovered outbox characteristic for peripheral \(peerUsername)")
-                peerOutboxes[peerUsername] = characteristic
+                peerOutbox = characteristic
+            } else if charUUID == CHAR_METADATA_UUID {
+                print("discovered metadata characteristic for peripheral \(peerUsername)")
+                peerMetadataChar = characteristic
             } else {
-                print("charUUID \(charUUID) did not match inbox or outbox char UUID for peripheral \(peerUsername)")
+                print("charUUID \(charUUID) did not match relevant char UUID for peripheral \(peerUsername)")
             }
         }
         
-        enableNotifications(enable: true, username: peerUsername)
+        let peerMetadata = self.delegate?.jsonDataToMessage(data: (peerMetadataChar?.value!)!) as! Metadata
+        
+        print("peerMetadata: \(peerMetadata)")
+        
+        if peerInbox != nil {
+            peerInboxes[peerMetadata.username!] = peerInbox
+        }
+        if peerOutbox != nil {
+            peerOutboxes[peerMetadata.username!] = peerOutbox
+        }
+        peerMetadatas[peerMetadata.username!] = peerMetadataChar
+
+        
+        enableNotifications(enable: true, username: peerMetadata.username!)
     }
     
     func readValue(for characteristic: CBCharacteristic) {
@@ -406,6 +433,18 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         if characteristic.uuid.uuidString == CHAR_OUTBOX_UUID {
             delegate?.didReadPeerOutbox(peripheral, data: characteristic.value as Data?)
         }
+        
+        switch (characteristic.uuid.uuidString) {
+        case CHAR_OUTBOX_UUID:
+            delegate?.didReadPeerOutbox(peripheral, data: characteristic.value as Data?)
+            break
+        case CHAR_METADATA_UUID:
+            // TODO
+            print("peer \(peripheral) updated metadata")
+            break
+        default:
+            break
+        }
     }
     
     func peripheral(_ peripheral: CBPeripheral, didReadRSSI RSSI: NSNumber, error: Error?) {
@@ -432,20 +471,26 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     func setupService() {
         let serviceUUID = CBUUID(string: SERVICE_UUID)
         
-        let inboxCharacteristic = CBMutableCharacteristic(type: CBUUID(string: CHAR_INBOX_UUID),
+        
+        self.inbox = CBMutableCharacteristic(type: CBUUID(string: CHAR_INBOX_UUID),
                                                      properties: .write, // inbox writable by peers
                                                      value: nil,
                                                      permissions: .writeable)
 
         
-        let outboxCharacteristic = CBMutableCharacteristic(type: CBUUID(string: CHAR_OUTBOX_UUID),
+        self.outbox = CBMutableCharacteristic(type: CBUUID(string: CHAR_OUTBOX_UUID),
                                                           properties: .read, // outbox readable by peers
                                                           value: nil,
                                                           permissions: .readable)
         
+        self.metadata = CBMutableCharacteristic(type: CBUUID(string: CHAR_METADATA_UUID),
+                                                           properties: .read, // outbox readable by peers
+                                                            value: delegate?.metadataToJSONData(),
+                                                            permissions: .readable)
+        
         
         let service = CBMutableService(type: serviceUUID, primary: true)
-        service.characteristics = [inboxCharacteristic, outboxCharacteristic]
+        service.characteristics = [self.inbox, self.outbox, self.metadata]
         
         blePeripheralManager.add(service)
         print("peripheral manager about to start advertising")
