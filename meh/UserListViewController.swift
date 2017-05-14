@@ -110,6 +110,10 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     func didDisconnectFromUser(_ model: MessengerModel, user: UUID) {
         print("[UserListViewController]  disconnected form user with UUID \(user)")
         // Update onlineUsersArray
+        UserListViewController.onlineUsersArray = Array(MessengerModel.shared.users.values)
+        tableView.reloadData()
+
+        /*
         for i in 0...(UserListViewController.onlineUsersArray.count) {
             if (UserListViewController.onlineUsersArray[i].uuid == user) {
                 print("Found disconnected user to remove from the user list.")
@@ -118,6 +122,7 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
 
             }
         }
+        */
         
     }
     
