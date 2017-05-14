@@ -84,7 +84,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         let message = messageInputField.text;
         print("sending \"", message as Any, "\"")
         
-        MessengerModel.shared.sendMessage(message: message!, recipientUUID: selected[0].uuid)
+        MessengerModel.shared.sendMessage(message: message!, recipient: selected[0].name!)
     }
     
     // MARK: MessengerModelDelegate functions
@@ -105,12 +105,12 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         }
     }
     
-    func didAddConnectedUser(_ model: MessengerModel, user: UUID) {
+    func didAddConnectedUser(_ model: MessengerModel, user: String) {
         // Do nothing
         return
     }
     
-    func didDisconnectFromUser(_ model: MessengerModel, user: UUID) {
+    func didDisconnectFromUser(_ model: MessengerModel, user: String) {
         // Do nothing
         return
     }}

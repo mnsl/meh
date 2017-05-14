@@ -237,8 +237,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "101"
             endingLineNumber = "101"
-            landmarkName = "MessengerModel"
-            landmarkType = "3">
+            landmarkName = "writeToInbox(data:username:)"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -269,8 +269,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "71"
             endingLineNumber = "71"
-            landmarkName = "init()"
-            landmarkType = "7">
+            landmarkName = "MessengerModel"
+            landmarkType = "3">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -333,23 +333,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "311"
             endingLineNumber = "311"
-            landmarkName = "peripheral(_:didModifyServices:)"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "meh/MessengerModel.swift"
-            timestampString = "516421992.739264"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "280"
-            endingLineNumber = "280"
-            landmarkName = "didReceiveMessage(data:sender:)"
+            landmarkName = "centralManager(_:didDisconnectPeripheral:error:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -381,7 +365,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "267"
             endingLineNumber = "267"
-            landmarkName = "didReceiveMessage(data:sender:)"
+            landmarkName = "centralDidReadOutbox(central:outboxContents:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -397,7 +381,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "263"
             endingLineNumber = "263"
-            landmarkName = "didReceiveMessage(data:sender:)"
+            landmarkName = "centralDidReadOutbox(central:outboxContents:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -413,8 +397,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "147"
             endingLineNumber = "147"
-            landmarkName = "init()"
-            landmarkType = "7">
+            landmarkName = "BLE"
+            landmarkType = "3">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>
