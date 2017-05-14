@@ -39,6 +39,10 @@ struct Message : JSONSerializable, Hashable {
     }
 }
 
+struct Metadata: JSONSerializable {
+    let username: String?
+    let peerMap: [String: [String]]?
+}
 
 struct User : Hashable {
     let uuid : UUID
@@ -65,6 +69,7 @@ class MessengerModel : BLEDelegate {
     var chats : [User: [Message]]?
     var users = [UUID: User]() // uuid -> username map for all known users
     var ble: BLE?
+    var metadata: Metadata?
     
     init() {
         ble = BLE()
@@ -254,6 +259,8 @@ class MessengerModel : BLEDelegate {
         // Once all the subscribed centrals have read a message, 
         // or if a central that reads the message happens to be the message recipient,
         // we should remove that message from the outbox.
+        print("[MessengerModel] centralDidReadOutbox(central: \(central), outboxContents: \(outboxContents))")
+        print("^not yet implemented")
     }
     
     func didReceiveMessage(data: Data?, sender: UUID) {
@@ -263,8 +270,7 @@ class MessengerModel : BLEDelegate {
         // Otherwise, if we have not already added the message to our peripheral's outbox,
         // add the message to our outbox.
         // unpack outbox data into messages, update outbox contents as necessary
-        print("MessengerModel recieved data")
-        print("data received \(String(describing: String(data:data!, encoding: String.Encoding.utf8))) ??")
+        print("[MessengerModel] didReceiveMessage(data: \(String(data: data!, encoding: .utf8) ?? "[could not convert to string]"), sender: \(sender))")
         let message = jsonDataToMessage(data: data!)
         print("Message: \(String(describing: message))")
 
@@ -283,6 +289,7 @@ class MessengerModel : BLEDelegate {
     
     func didReadPeerOutbox(_ peripheral: CBPeripheral, data: Data?) {
         // parse data as list of messages.. if a message is new, update the delegate
+        print("[MessengerModel] didReadPeerOutbox(peripheral: \(peripheral), data: \(data))")
         let messages = jsonDataToOutbox(data: data!)
         
         // for msg in messages parsed from data: call messengerModel(_ model: shared, didReceiveMessage: msg)
@@ -346,17 +353,24 @@ class MessengerModel : BLEDelegate {
      Converts JSON-formatted Data into the corresponding Message.
     */
     func jsonDataToMessage(data: Data) -> Message? {
+        print("data: \( String(data: data, encoding: .utf8) ?? "[couldn't convert to string]") ")
+
         let json = try? JSONSerialization.jsonObject(with: data, options: [])
-        print("trying to convert json: \(String(describing: json)) to message")
+        print("json: \(json)")
+
         if let dict = json as? [String: String] {
+            print("dict: \(dict)")
             let content = dict["content"]
             let sender = UUID(uuidString: dict["sender"]!)
             let recipient = UUID(uuidString: dict["recipient"]!)
             let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
             let date = dateFormatter.date(from: dict["date"]!)
             print("content: \(content), sender: \(sender), date: \(date), recipient: \(String(describing: recipient))")
             
-            return Message(content: content!, sender: sender!, date: date!, recipient: recipient!)
+            let msg = Message(content: content!, sender: sender!, date: date!, recipient: recipient!)
+            print("message: \(msg)")
+            return msg
         }
    
         return nil
@@ -364,16 +378,19 @@ class MessengerModel : BLEDelegate {
 
     func jsonDataToOutbox(data: Data?) -> [Message]? {
         //let json = try? JSONSerialization.jsonObject(with: data, options: [])
+        print("data: \( String(data: data!, encoding: .utf8) ?? "[couldn't convert to string]") ")
         
         if let outboxData = data {
             var messages = [Message]()
             let json = try? JSONSerialization.jsonObject(with: outboxData, options: [])
+            print("json: \(json)")
             if let outboxJSON = json as? [ [String: String] ] {
                 for messageDict in outboxJSON {
                     let content = messageDict["content"]
                     let sender = UUID(uuidString: messageDict["sender"]!)
                     let recipient = UUID(uuidString: messageDict["recipient"]!)
                     let dateFormatter = DateFormatter()
+                    dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
                     let date = dateFormatter.date(from: messageDict["date"]!)
                     
                     let message = Message(content: content!, sender: sender!, date: date!, recipient: recipient!)

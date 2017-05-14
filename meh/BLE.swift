@@ -101,6 +101,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     let SERVICE_UUID = "713D0000-503E-4C75-BA94-3148F18D941E"
     let CHAR_INBOX_UUID = "713D0002-503E-4C75-BA94-3148F18D941E"
     let CHAR_OUTBOX_UUID = "713D0003-503E-4C75-BA94-3148F18D941E"
+    let CHAR_METADATA_UUID = "713D0004-503E-4C75-BA94-3148F18D941E"
     
     var delegate: BLEDelegate?
     
@@ -120,6 +121,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     public var subscribedCentrals = [UUID: CBCentral]()
     public var inbox : CBMutableCharacteristic!
     public var outbox : CBMutableCharacteristic!
+    public var metadata : CBMutableCharacteristic!
     
     private var peripheralData: [String: AnyObject]?
     var services: [CBMutableService]!
@@ -143,6 +145,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         self.data = NSMutableData()
         self.inbox = CBMutableCharacteristic(type: CBUUID(string: CHAR_INBOX_UUID), properties: CBCharacteristicProperties.write, value: nil, permissions: CBAttributePermissions.writeable)
         self.outbox = CBMutableCharacteristic(type: CBUUID(string: CHAR_OUTBOX_UUID), properties: CBCharacteristicProperties.read, value: nil, permissions: CBAttributePermissions.readable)
+        self.metadata = CBMutableCharacteristic(type: CBUUID(string: CHAR_METADATA_UUID), properties: CBCharacteristicProperties.read, value: nil, permissions: CBAttributePermissions.readable)
         
     }
     
@@ -441,14 +444,19 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
                                                           value: nil,
                                                           permissions: .readable)
         
+        let metadataCharacteristic = CBMutableCharacteristic(type: CBUUID(string: CHAR_METADATA_UUID),
+                                                           properties: .read, // outbox readable by peers
+            value: {"username": SettingsModel.username, "connectedPeers": {}},
+                                                            permissions: .readable)
+        
         
         let service = CBMutableService(type: serviceUUID, primary: true)
-        service.characteristics = [inboxCharacteristic, outboxCharacteristic]
+        service.characteristics = [inboxCharacteristic, outboxCharacteristic, metadataCharacteristic]
         
         blePeripheralManager.add(service)
         print("peripheral manager about to start advertising")
         
-        let advertisementData = [CBAdvertisementDataLocalNameKey: "me$h", CBAdvertisementDataServiceUUIDsKey: [service.uuid]] as [String : Any]
+        let advertisementData = [CBAdvertisementDataLocalNameKey: SettingsModel.username, CBAdvertisementDataServiceUUIDsKey: [service.uuid]] as [String : Any]
 
         blePeripheralManager.startAdvertising(advertisementData)
         
