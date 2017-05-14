@@ -93,7 +93,7 @@ class MessengerModel : BLEDelegate {
         guard let inboxCharacteristic = ble?.peerInboxes[uuid] else { return false }
         guard let peer = ble?.connectedPeripherals[uuid] else { return false }
         
-        peer.writeValue(data, for: inboxCharacteristic, type: .withoutResponse)
+        peer.writeValue(data, for: inboxCharacteristic, type: .withResponse)
         return true
     }
     
@@ -316,10 +316,12 @@ class MessengerModel : BLEDelegate {
             print("message \(message) -> JSON \(json)")
             return json.data(using: .utf8)
         }
+        print("could not convert '\(message)' to JSON")
         return nil
     }
     
     func outboxToJSONData(outbox: [Message]) -> Data? {
+        print("outboxToJSONData not implemented")
         return nil // TODO
     }
     

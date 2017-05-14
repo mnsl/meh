@@ -42,15 +42,33 @@ extension JSONSerializable {
         let representation = JSONRepresentation
         
         guard JSONSerialization.isValidJSONObject(representation) else {
+            print("JSONRepresentation \(representation) is not valid JSON object")
             return nil
         }
         
         do {
             let data = try JSONSerialization.data(withJSONObject: representation, options: [])
+            print("JSON serialized data is \(data)")
             return String(data: data, encoding: String.Encoding.utf8)
         } catch {
+            print("failed to produce JSON serialized version of representation \(representation)")
             return nil
         }
+    }
+}
+
+extension Date: JSONRepresentable {
+    var JSONRepresentation: AnyObject {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
+        
+        return formatter.string(from: self) as AnyObject
+    }
+}
+
+extension UUID: JSONRepresentable {
+    var JSONRepresentation: AnyObject {
+        return self.uuidString as AnyObject
     }
 }
 
