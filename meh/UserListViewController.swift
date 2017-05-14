@@ -9,7 +9,6 @@
 import Foundation
 import UIKit
 
-
 class UserListViewController: UIViewController, UITableViewDataSource, MessengerModelDelegate, UITableViewDelegate {
     @IBOutlet weak var tableView: UITableView!
     @IBOutlet weak var startchat: UIButton!
@@ -47,18 +46,11 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
             if name == nil {
                 name = UserListViewController.onlineUsersArray[i].uuid.uuidString
             }
-            addUsername(username: name!)
+            //addUsername(username: name!)
         }
 
         }
         tableView.endUpdates()
-        
-        
-    }
-    
-    func addUsername(username:String) {
-        let cell_to_fill = tableView.dequeueReusableCell(withIdentifier: "Username")
-        cell_to_fill?.textLabel?.text = username
     }
 
     func numberOfSections(in tableView: UITableView) -> Int {
@@ -112,13 +104,7 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     func didAddConnectedUser(_ model: MessengerModel, user: UUID) {
         print("[UserListViewController] added connected user with UUID \(user)")
         UserListViewController.onlineUsersArray = Array(MessengerModel.shared.users.values)
-        tableView.beginUpdates()
-        if let userWithName = MessengerModel.shared.users[user] {
-            addUsername(username: (userWithName.name)!)
-        } else {
-            addUsername(username: (user.uuidString))
-        }
-        tableView.endUpdates()
+        tableView.reloadData()
     }
     
     func didDisconnectFromUser(_ model: MessengerModel, user: UUID) {
