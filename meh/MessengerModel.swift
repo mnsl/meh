@@ -263,14 +263,19 @@ class MessengerModel : BLEDelegate {
         // Otherwise, if we have not already added the message to our peripheral's outbox,
         // add the message to our outbox.
         // unpack outbox data into messages, update outbox contents as necessary
-        
+        print("MessengerModel recieved data")
+        print("data received \(String(describing: String(data:data!, encoding: String.Encoding.utf8))) ??")
         let message = jsonDataToMessage(data: data!)
+        print("Message: \(String(describing: message))")
+
         if UUID(uuid: (message?.recipient.uuid)!) == UIDevice.current.identifierForVendor! {
             print("message received was intended for this user")
             for delegate in delegates {
+                print("calling delegate \(delegate)")
                 delegate.didReceiveMessage(.shared, msg: message)
             }
         } else {
+            print("neighbors do not include message recipient, broadcast!")
             sendMessage(message: message!, exclude: sender)
         }
         
@@ -342,12 +347,14 @@ class MessengerModel : BLEDelegate {
     */
     func jsonDataToMessage(data: Data) -> Message? {
         let json = try? JSONSerialization.jsonObject(with: data, options: [])
+        print("trying to convert json: \(String(describing: json)) to message")
         if let dict = json as? [String: String] {
             let content = dict["content"]
             let sender = UUID(uuidString: dict["sender"]!)
             let recipient = UUID(uuidString: dict["recipient"]!)
             let dateFormatter = DateFormatter()
             let date = dateFormatter.date(from: dict["date"]!)
+            print("content: \(content), sender: \(sender), date: \(date), recipient: \(String(describing: recipient))")
             
             return Message(content: content!, sender: sender!, date: date!, recipient: recipient!)
         }
