@@ -134,8 +134,6 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         self.bleCentralManager = CBCentralManager(delegate: self, queue: nil)
         self.blePeripheralManager = CBPeripheralManager(delegate: self, queue: nil)
         self.data = NSMutableData()
-        self.inbox = CBMutableCharacteristic(type: CBUUID(string: CHAR_INBOX_UUID), properties: CBCharacteristicProperties.write, value: nil, permissions: CBAttributePermissions.writeable)
-        self.outbox = CBMutableCharacteristic(type: CBUUID(string: CHAR_OUTBOX_UUID), properties: CBCharacteristicProperties.read, value: nil, permissions: CBAttributePermissions.readable)
         
     }
     

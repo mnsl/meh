@@ -65,7 +65,7 @@ class MessengerModel : BLEDelegate {
     var chats : [User: [Message]]?
     var users = [String: User]() // uuid -> username map for all known users
     var ble: BLE?
-    
+        
     init() {
         ble = BLE()
         ble?.delegate = self
