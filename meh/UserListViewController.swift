@@ -101,14 +101,14 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
         return
     }
 
-    func didAddConnectedUser(_ model: MessengerModel, user: UUID) {
-        print("[UserListViewController] added connected user with UUID \(user)")
+    func didAddConnectedUser(_ model: MessengerModel, user: String) {
+        print("[UserListViewController] added connected user with username \(user)")
         UserListViewController.onlineUsersArray = Array(MessengerModel.shared.users.values)
         tableView.reloadData()
     }
     
-    func didDisconnectFromUser(_ model: MessengerModel, user: UUID) {
-        print("[UserListViewController]  disconnected form user with UUID \(user)")
+    func didDisconnectFromUser(_ model: MessengerModel, user: String) {
+        print("[UserListViewController]  disconnected form user with username \(user)")
         // Update onlineUsersArray
         UserListViewController.onlineUsersArray = Array(MessengerModel.shared.users.values)
         tableView.reloadData()

@@ -13,8 +13,8 @@ import CoreBluetooth
 protocol MessengerModelDelegate {
     func didSendMessage(_ model: MessengerModel, msg: Message?)
     func didReceiveMessage(_ model: MessengerModel, msg: Message?)
-    func didAddConnectedUser(_ model: MessengerModel, user: UUID)
-    func didDisconnectFromUser(_ model: MessengerModel, user: UUID)
+    func didAddConnectedUser(_ model: MessengerModel, user: String)
+    func didDisconnectFromUser(_ model: MessengerModel, user: String)
 }
 
 extension Notification.Name {
@@ -26,9 +26,9 @@ extension Notification.Name {
 
 struct Message : JSONSerializable, Hashable {
     let content : String
-    let sender : UUID
+    let sender : String
     let date: Date
-    let recipient : UUID
+    let recipient : String
     
     // conform to Hashable protocol
     var hashValue: Int {
@@ -63,7 +63,7 @@ class MessengerModel : BLEDelegate {
     var delegates = [MessengerModelDelegate]()
     
     var chats : [User: [Message]]?
-    var users = [UUID: User]() // uuid -> username map for all known users
+    var users = [String: User]() // uuid -> username map for all known users
     var ble: BLE?
     
     init() {
@@ -88,10 +88,10 @@ class MessengerModel : BLEDelegate {
      * @discussion  Write data to inbox of a specific peripheral
      *
      */
-    func writeToInbox(data: Data, uuid: UUID) -> Bool {
+    func writeToInbox(data: Data, username: String) -> Bool {
         
-        guard let inboxCharacteristic = ble?.peerInboxes[uuid] else { return false }
-        guard let peer = ble?.connectedPeripherals[uuid] else { return false }
+        guard let inboxCharacteristic = ble?.peerInboxes[username] else { return false }
+        guard let peer = ble?.connectedPeripherals[username] else { return false }
         
         peer.writeValue(data, for: inboxCharacteristic, type: .withResponse)
         return true
@@ -100,16 +100,16 @@ class MessengerModel : BLEDelegate {
     // write message to the inboxes of all peripherals this
     // node's central is subscribed to, except "exclude" 
     // (the peer who sent you the message)
-    func writeToAllInboxes(data: Data, exclude: UUID) {
+    func writeToAllInboxes(data: Data, exclude: String) {
         // for every peripheral this node's central is subscribed to,
         // write the message data to their inbox.
-        for (uuid, _) in (ble?.connectedPeripherals)! {
-            if uuid == exclude {
+        for (username, _) in (ble?.connectedPeripherals)! {
+            if username == exclude {
                 continue // don't want to send message back to peer who sent you it
             }
-            let success = writeToInbox(data: data, uuid: uuid)
+            let success = writeToInbox(data: data, username: username)
             if !success {
-                print("failed to write to inbox of peripheral \(uuid)")
+                print("failed to write to inbox of peripheral \(username)")
             }
         }
     }
@@ -152,7 +152,7 @@ class MessengerModel : BLEDelegate {
      *                if the message has gone through or failed.
      *
      */
-    func sendMessage(message: String, recipientUUID: UUID){
+    func sendMessage(message: String, recipient: String){
         // TODO: only count the message as sent if we receive an ACK
         // Convert the string to a Message struct
         
@@ -161,18 +161,18 @@ class MessengerModel : BLEDelegate {
         
         // else stick the message in this node's peripheral's outbox.
         
-        let message = Message(content: message, sender: UIDevice.current.identifierForVendor!, date: Date(), recipient: recipientUUID)
+        let message = Message(content: message, sender: SettingsModel.username!, date: Date(), recipient: recipient)
         // TODO(quacht): update the chat dictionary (so that chat history can show up accordingly on chat view controller)
-        sendMessage(message: message, exclude: UIDevice.current.identifierForVendor!)
+        sendMessage(message: message, exclude: SettingsModel.username!)
     }
     
-    func sendMessage(message: Message, exclude: UUID) {
+    func sendMessage(message: Message, exclude: String) {
         let messageData = messageToJSONData(message: message)
         
         // Check to see if the recipient is connected a central or peripheral node
         if (ble?.connectedPeripherals[message.recipient] != nil) {
             // Write to the peripheral's inbox characteristic
-            let success = writeToInbox(data: messageData!, uuid: message.recipient)
+            let success = writeToInbox(data: messageData!, username: message.recipient)
             if success {
                 print("successfully wrote to inbox of message recipient \(message.recipient), who happened to be directly connected as a peripheral")
             } else {
@@ -228,9 +228,9 @@ class MessengerModel : BLEDelegate {
     func didConnectToPeripheral(peripheral: CBPeripheral) {
         print("connecting to peripheral \(peripheral)...")
         let newUser = User(uuid: peripheral.identifier, name: peripheral.name)
-        MessengerModel.shared.users[peripheral.identifier] = newUser
+        MessengerModel.shared.users[peripheral.name!] = newUser
         for delegate in delegates {
-            delegate.didAddConnectedUser(.shared, user: peripheral.identifier)
+            delegate.didAddConnectedUser(.shared, user: peripheral.name!)
         }
     }
     
@@ -238,12 +238,12 @@ class MessengerModel : BLEDelegate {
         // TODO: broadcast "lostPeer" message
         // Remove peripheral for Messenger Model's user list.
         print("disconnected from peripheral \(peripheral)...")
-        MessengerModel.shared.users.removeValue(forKey: peripheral.identifier)
+        MessengerModel.shared.users.removeValue(forKey: peripheral.name!)
         // Tell view controller delegate to update list of connected users
         
         // view controller delegate should update list of connected users
         for delegate in delegates {
-            delegate.didDisconnectFromUser(.shared, user: peripheral.identifier)
+            delegate.didDisconnectFromUser(.shared, user: peripheral.name!)
         }
     }
     
@@ -258,7 +258,7 @@ class MessengerModel : BLEDelegate {
         print("^not yet implemented")
     }
     
-    func didReceiveMessage(data: Data?, sender: UUID) {
+    func didReceiveMessage(data: Data?, sender: String) {
         // Convert the message JSON-formatted data into a Message.
         // If the recipient UUID matches that of a connected peripheral,
         // update that peripheral's inbox specifically.
@@ -268,7 +268,7 @@ class MessengerModel : BLEDelegate {
         print("[MessengerModel] didReceiveMessage(data: \(String(data: data!, encoding: .utf8) ?? "[could not convert to string]"), sender: \(sender))")
         
         let message = jsonDataToMessage(data: data!)
-        if UUID(uuid: (message?.recipient.uuid)!) == UIDevice.current.identifierForVendor! {
+        if message?.recipient == SettingsModel.username {
             print("message received was intended for this user")
             for delegate in delegates {
                 delegate.didReceiveMessage(.shared, msg: message)
@@ -293,22 +293,28 @@ class MessengerModel : BLEDelegate {
         }
     }
     
-    func centralDidSubscribe(central: UUID) {
+    func centralDidSubscribe(central: CBCentral) {
         print("central \(central) just subscribed")
         // TODO: update UUID -> username map somehow... central doesn't have a "name"
-        let newUser = User(uuid: central, name: "TBD")
+        // TODO: implement this stuff
+        /*
+        let newUser = User(uuid: central.identifier, name: )
         MessengerModel.shared.users[central] = newUser
         for delegate in delegates {
             delegate.didAddConnectedUser(.shared, user: central)
         }
+         */
     }
     
-    func centralDidUnsubscribe(central: UUID) {
+    func centralDidUnsubscribe(central: CBCentral) {
         print("central \(central) just unsubscribed")
-        MessengerModel.shared.users.removeValue(forKey: central)
+        //TODO: implement this stuff
+        /**
+        MessengerModel.shared.users.removeValue(forKey: central.name!)
         for delegate in delegates {
             delegate.didDisconnectFromUser(.shared, user: central)
         }
+        */
     }
     
     /**
@@ -353,14 +359,15 @@ class MessengerModel : BLEDelegate {
         if let dict = json as? [String: String] {
             print("dict: \(dict)")
             let content = dict["content"]
-            let sender = UUID(uuidString: dict["sender"]!)
-            let recipient = UUID(uuidString: dict["recipient"]!)
+            let sender = dict["sender"]
+            let recipient = dict["recipient"]
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
             let date = dateFormatter.date(from: dict["date"]!)
             
             let msg = Message(content: content!, sender: sender!, date: date!, recipient: recipient!)
             print("message: \(msg)")
+            return msg
         }
    
         return nil
@@ -377,8 +384,8 @@ class MessengerModel : BLEDelegate {
             if let outboxJSON = json as? [ [String: String] ] {
                 for messageDict in outboxJSON {
                     let content = messageDict["content"]
-                    let sender = UUID(uuidString: messageDict["sender"]!)
-                    let recipient = UUID(uuidString: messageDict["recipient"]!)
+                    let sender = messageDict["sender"]
+                    let recipient = messageDict["recipient"]
                     let dateFormatter = DateFormatter()
                     dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
                     let date = dateFormatter.date(from: messageDict["date"]!)
