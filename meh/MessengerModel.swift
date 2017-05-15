@@ -82,7 +82,7 @@ class MessengerModel : BLEDelegate {
     var users = [String: User]() // uuid -> username map for all known users
     var ble: BLE?
     
-    var metadata: Metadata?
+    var metadata = Metadata(username: SettingsModel.username, peerMap: [String : [String]]())
     
     init() {
         ble = BLE()
@@ -280,25 +280,28 @@ class MessengerModel : BLEDelegate {
     }
     
     func didConnectToPeripheral(peripheral: CBPeripheral) {
-        print("connecting to peripheral \(peripheral)...")
-        let newUser = User(uuid: peripheral.identifier, name: peripheral.name)
-        MessengerModel.shared.users[peripheral.name!] = newUser
-        for delegate in delegates {
-            delegate.didAddConnectedUser(.shared, user: peripheral.name!)
-        }
+        print("[MessengerModel]didConnectToPeripheral(peripheral \(peripheral))")
     }
     
     func didDisconnectFromPeripheral(peripheral: CBPeripheral) {
         // TODO: broadcast "lostPeer" message
         // Remove peripheral for Messenger Model's user list.
         print("disconnected from peripheral \(peripheral)...")
-        MessengerModel.shared.users.removeValue(forKey: peripheral.name!)
-        // Tell view controller delegate to update list of connected users
         
-        // view controller delegate should update list of connected users
-        for delegate in delegates {
-            delegate.didDisconnectFromUser(.shared, user: peripheral.name!)
+        for (_, user) in MessengerModel.shared.users {
+            if (user.uuid == peripheral.identifier) {
+                print("removing associated user \(user)")
+                MessengerModel.shared.users.removeValue(forKey: user.name!)
+                
+                // view controller delegate should update list of connected users
+                for delegate in delegates {
+                    delegate.didDisconnectFromUser(.shared, user: user.name!)
+                }
+                // hopefully only one user associated with this identifier??
+                break
+            }
         }
+
     }
     
     func centralDidReadOutbox(central: UUID, outboxContents: Data?) {
@@ -487,7 +490,7 @@ class MessengerModel : BLEDelegate {
     func metadataToJSONData() -> Data? {
         print("[MessengerModel] metadataToJSONData()")
         print("metadata: \(self.metadata)")
-        if let json = self.metadata?.toJSON() {
+        if let json = self.metadata.toJSON() {
             print("metadata \(self.metadata) -> JSON \(json)")
             return json.data(using: .utf8)
         }
