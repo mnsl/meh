@@ -381,7 +381,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "287"
             endingLineNumber = "287"
-            landmarkName = "didDiscoverPeripheral(peripheral:)"
+            landmarkName = "didUpdateState(state:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
