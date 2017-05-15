@@ -13,9 +13,12 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
 
     @IBOutlet weak var chatHeader: UINavigationBar!
     @IBOutlet weak var chatTextField: UITextView!
-    @IBOutlet weak var messageInputField: UITextView!
+    @IBOutlet weak var messageInputField: UITextField!
     @IBOutlet weak var sendButton: UIButton!
     @IBOutlet weak var chatMembers: UINavigationItem!
+    
+    // This constraint ties an element at zero points from the bottom layout guide
+    @IBOutlet var keyboardHeightLayoutConstraint: NSLayoutConstraint?
     
     var chatMemberList = [String]()
     var selected = Array(UserListViewController.selectedUsers)
@@ -51,7 +54,14 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         // Set this view controller to be the delegate of MessengerModel that keeps track of the messages being sent between you and others on the network.
         MessengerModel.shared.delegates.append(self)
 
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(self.keyboardNotification(notification:)), name: NSNotification.Name.UIKeyboardWillChangeFrame, object: nil)
     }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
     
     func clearChatDisplay() {
         chatTextField.text = "";
@@ -87,6 +97,8 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         print("sending \"", message as Any, "\"")
         
         MessengerModel.shared.sendMessage(message: message!, recipient: selected[0].name!)
+        // clear message input field
+        messageInputField.text = ""
     }
     
     // MARK: MessengerModelDelegate functions
@@ -115,4 +127,31 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     func didDisconnectFromUser(_ model: MessengerModel, user: String) {
         // Do nothing
         return
-    }}
+    }
+
+    
+    func keyboardNotification(notification: NSNotification) {
+        if let userInfo = notification.userInfo {
+            let endFrame = (userInfo[UIKeyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue
+            let duration:TimeInterval = (userInfo[UIKeyboardAnimationDurationUserInfoKey] as? NSNumber)?.doubleValue ?? 0
+            let animationCurveRawNSN = userInfo[UIKeyboardAnimationCurveUserInfoKey] as? NSNumber
+            let animationCurveRaw = animationCurveRawNSN?.uintValue ?? UIViewAnimationOptions.curveEaseInOut.rawValue
+            let animationCurve:UIViewAnimationOptions = UIViewAnimationOptions(rawValue: animationCurveRaw)
+            if (endFrame?.origin.y)! >= UIScreen.main.bounds.size.height {
+                self.keyboardHeightLayoutConstraint?.constant = 35.0
+            } else {
+                if endFrame?.size.height != nil {
+                    self.keyboardHeightLayoutConstraint?.constant = (endFrame?.size.height)! + 10.0
+                } else {
+                    self.keyboardHeightLayoutConstraint?.constant = 35.0
+                }
+            }
+            UIView.animate(withDuration: duration,
+                           delay: TimeInterval(0),
+                           options: animationCurve,
+                           animations: { self.view.layoutIfNeeded() },
+                           completion: nil)
+        }
+    }
+
+}
