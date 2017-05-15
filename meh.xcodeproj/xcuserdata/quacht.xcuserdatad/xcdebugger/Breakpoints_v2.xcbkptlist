@@ -237,8 +237,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "101"
             endingLineNumber = "101"
-            landmarkName = "writeToInbox(data:username:)"
-            landmarkType = "7">
+            landmarkName = "MessengerModel"
+            landmarkType = "3">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -285,8 +285,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "67"
             endingLineNumber = "67"
-            landmarkName = "MessengerModel"
-            landmarkType = "3">
+            landmarkName = "==(_:_:)"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -365,7 +365,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "267"
             endingLineNumber = "267"
-            landmarkName = "centralDidReadOutbox(central:outboxContents:)"
+            landmarkName = "didConnectToPeripheral(peripheral:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -381,7 +381,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "263"
             endingLineNumber = "263"
-            landmarkName = "centralDidReadOutbox(central:outboxContents:)"
+            landmarkName = "didConnectToPeripheral(peripheral:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -397,8 +397,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "147"
             endingLineNumber = "147"
-            landmarkName = "BLE"
-            landmarkType = "3">
+            landmarkName = "scanTimeout()"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

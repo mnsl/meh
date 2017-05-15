@@ -55,19 +55,19 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         chatTextField.text = "";
     }
     
-    func addMessageToDisplay(message: Message) {
+    func addMessageToDisplay(message: UserMessage) {
         let string_repr = messageToString(message: message)
         chatTextField.text = chatTextField.text + string_repr
     }
     
-    func loadMessages(messages: [Message]){
+    func loadMessages(messages: [UserMessage]){
         for message in messages {
             addMessageToDisplay(message: message)
         }
     }
     
     
-    func messageToString(message: Message) -> String {
+    func messageToString(message: UserMessage) -> String {
         // Given a message object, return string representation to be printed to the chat.
         let sender = MessengerModel.shared.users[message.sender]
         return (sender?.name)! + ": " + message.content + "\n" as String
@@ -88,7 +88,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     }
     
     // MARK: MessengerModelDelegate functions
-    func didSendMessage(_ model: MessengerModel, msg: Message?) {
+    func didSendMessage(_ model: MessengerModel, msg: UserMessage?) {
         // Once we recieve confirmation from the Messenger model that a message has been sent, we display the message we sent.
         if msg != nil {
         addMessageToDisplay(message: msg!)
@@ -97,7 +97,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         }
     }
     
-    func didReceiveMessage(_ model: MessengerModel, msg: Message?) {
+    func didReceiveMessage(_ model: MessengerModel, msg: UserMessage?) {
         if msg != nil {
             addMessageToDisplay(message: msg!)
         } else {

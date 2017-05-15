@@ -11,8 +11,8 @@ import UIKit
 import CoreBluetooth
 
 protocol MessengerModelDelegate {
-    func didSendMessage(_ model: MessengerModel, msg: Message?)
-    func didReceiveMessage(_ model: MessengerModel, msg: Message?)
+    func didSendMessage(_ model: MessengerModel, msg: UserMessage?)
+    func didReceiveMessage(_ model: MessengerModel, msg: UserMessage?)
     func didAddConnectedUser(_ model: MessengerModel, user: String)
     func didDisconnectFromUser(_ model: MessengerModel, user: String)
 }
@@ -24,7 +24,13 @@ extension Notification.Name {
 
 // TODO: is this data structure what we want?
 
-struct Message : JSONSerializable, Hashable {
+protocol Message : JSONSerializable {
+    var type: String { get }
+}
+
+
+struct UserMessage : Message, Hashable {
+    let type = "UserMessage"
     let content : String
     let sender : String
     let date: Date
@@ -34,14 +40,18 @@ struct Message : JSONSerializable, Hashable {
     var hashValue: Int {
         return content.hashValue*2 + sender.hashValue*3 + date.hashValue*5 + recipient.hashValue*7
     }
-    static func == (lhs: Message, rhs: Message) -> Bool {
+    
+    static func == (lhs: UserMessage, rhs: UserMessage) -> Bool {
         return lhs.content == rhs.content && lhs.sender == rhs.sender && lhs.recipient == rhs.recipient && lhs.date == rhs.date
     }
 }
 
-struct Metadata: JSONSerializable {
-    let username: String?
-    let peerMap: [String: [String]]?
+struct Metadata : Message {
+    
+    let type = "Metadata"
+    
+    let username : String?
+    let peerMap : [String: [String]]
 }
 
 struct User : Hashable {
@@ -66,7 +76,7 @@ class MessengerModel : BLEDelegate {
     
     var delegates = [MessengerModelDelegate]()
     
-    var chats : [User: [Message]]?
+    var chats : [User: [UserMessage]]?
     var users = [String: User]() // uuid -> username map for all known users
     var ble: BLE?
     var metadata: Metadata?
@@ -78,7 +88,7 @@ class MessengerModel : BLEDelegate {
     
     
     // write data to inbox of a specific peripheral,
-    // probably because they're the recipient of this message
+    // probably because they're the recipient of this UserMessage
     // (later, we will also use this to do smarter routing --
     // only write to inboxes of peripherals who can reach
     // the recipient
@@ -124,21 +134,38 @@ class MessengerModel : BLEDelegate {
      * @param data  JSON-formatted message data
      * @return true iff message was successfully added (TODO)
      */
-    func addMessageToOutbox(message: Message) -> Bool {
+    func addMessageToOutbox(message: UserMessage) -> Bool {
 
-        let oldOutboxData = self.ble?.inbox.value
-        var outbox = jsonDataToOutbox(data: oldOutboxData!)!
-        outbox.append(message)
+        var outbox = [UserMessage]()
+
+        print("self.ble?.outbox: \(self.ble?.outbox)")
         
+        var outboxEmpty = false
+        if self.ble?.outbox.value == nil {
+            print("outbox empty")
+            outboxEmpty = true
+        }
+        if !outboxEmpty {
+            let oldOutboxData = self.ble?.outbox.value
+            if let oldMessages = jsonDataToOutbox(data: oldOutboxData) {
+                outbox += oldMessages
+            }
+        }
+        outbox.append(message)
         let newOutboxData = outboxToJSONData(outbox: outbox)
         
-        overwriteOutbox(data: newOutboxData!)
-        
+        overwriteOutbox(data: newOutboxData)
+
         return true
     }
     
     // overwrite outbox contents
     func overwriteOutbox(data: Data?) {
+        print("[MessengerModel] overwriteOutbox(data: \(data)")
+        if data == nil {
+            return
+        }
+        
         if (self.ble?.blePeripheralManager.updateValue(data!, for: (self.ble?.outbox)!, onSubscribedCentrals: self.ble?.subscribedCentrals.values.toArray()))! {
             print("successfully updated outbox characteristic")
         } else {
@@ -166,12 +193,12 @@ class MessengerModel : BLEDelegate {
         
         // else stick the message in this node's peripheral's outbox.
         
-        let message = Message(content: message, sender: SettingsModel.username!, date: Date(), recipient: recipient)
+        let message = UserMessage(content: message, sender: SettingsModel.username!, date: Date(), recipient: recipient)
         // TODO(quacht): update the chat dictionary (so that chat history can show up accordingly on chat view controller)
         sendMessage(message: message, exclude: SettingsModel.username!)
     }
     
-    func sendMessage(message: Message, exclude: String) {
+    func sendMessage(message: UserMessage, exclude: String) {
         let messageData = messageToJSONData(message: message)
         
         // Check to see if the recipient is connected a central or peripheral node
@@ -272,16 +299,30 @@ class MessengerModel : BLEDelegate {
         // unpack outbox data into messages, update outbox contents as necessary
         print("[MessengerModel] didReceiveMessage(data: \(String(data: data!, encoding: .utf8) ?? "[could not convert to string]"), sender: \(sender))")
         let message = jsonDataToMessage(data: data!)
-        
-        if message?.recipient == SettingsModel.username {
-            print("message received was intended for this user")
-            for delegate in delegates {
-                print("calling delegate \(delegate)")
-                delegate.didReceiveMessage(.shared, msg: message)
+
+        if message?.type == "UserMessage" {
+            let userMessage = message as! UserMessage
+            if userMessage.recipient == SettingsModel.username {
+                print("message received was intended for this user")
+                for delegate in delegates {
+                    delegate.didReceiveMessage(.shared, msg: userMessage)
+                }
+            } else {
+                if userMessage != nil {
+                    sendMessage(message: userMessage, exclude: sender)
+                } else {
+                    print("userMessage was nil...")
+                }
+                
             }
         } else {
-            print("neighbors do not include message recipient, broadcast!")
-            sendMessage(message: message!, exclude: sender)
+            let metadata = message as! Metadata
+            print("didReceiveMessage() received metadata from \(sender): \(metadata)")
+    
+            if metadata.username != sender {
+                print("sender \(sender) did not match metadata name \(metadata.username)")
+            }
+            
         }
         
     }
@@ -328,7 +369,7 @@ class MessengerModel : BLEDelegate {
      Converts a Message to JSON-formatted Data to be loaded into a CBCharacteristic's "value" attribute.
      If the Message can't be converted, returns nil.
     */
-    func messageToJSONData(message: Message) -> Data? {
+    func messageToJSONData(message: UserMessage) -> Data? {
         if let json = message.toJSON() {
             print("message \(message) -> JSON \(json)")
             return json.data(using: .utf8)
@@ -337,7 +378,7 @@ class MessengerModel : BLEDelegate {
         return nil
     }
     
-    func outboxToJSONData(outbox: [Message]) -> Data? {
+    func outboxToJSONData(outbox: [UserMessage]) -> Data? {
         print("outboxToJSONData not implemented")
         return nil // TODO
     }
@@ -347,7 +388,7 @@ class MessengerModel : BLEDelegate {
      Remove message from outbox if it was in the outbox.
      Returns true if the message was in the outbox, else false.
     */
-    func removeMessageFromOutbox(message: Message) -> Bool {
+    func removeMessageFromOutbox(message: UserMessage) -> Bool {
         return true // TODO
     }
     
@@ -365,28 +406,41 @@ class MessengerModel : BLEDelegate {
 
         if let dict = json as? [String: String] {
             print("dict: \(dict)")
-            let content = dict["content"]
-            let sender = dict["sender"]
-            let recipient = dict["recipient"]
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
-            let date = dateFormatter.date(from: dict["date"]!)
-            print("content: \(content), sender: \(sender), date: \(date), recipient: \(String(describing: recipient))")
             
-            let msg = Message(content: content!, sender: sender!, date: date!, recipient: recipient!)
-            print("message: \(msg)")
-            return msg
+            let type = dict["type"]
+            if type == "UserMessage" {
+                print("jsonDataToMessage called for message: ")
+                let content = dict["content"]
+                let sender = dict["sender"]
+                let recipient = dict["recipient"]
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
+                let date = dateFormatter.date(from: dict["date"]!)
+                
+                let msg = UserMessage(content: content!, sender: sender!, date: date!, recipient: recipient!)
+                print("UserMessage: \(msg)")
+                return msg
+            } else {
+                print("jsonDataToMessage called for metadata... ")
+                let username = dict["username"]
+                
+                print("peerMap: \(dict["peerMap"])") // TODO
+                let metadata = Metadata(username: username, peerMap: [String : [String]]())
+                return metadata
+            }
+            
+            
         }
    
         return nil
     }
 
-    func jsonDataToOutbox(data: Data?) -> [Message]? {
+    func jsonDataToOutbox(data: Data?) -> [UserMessage]? {
         //let json = try? JSONSerialization.jsonObject(with: data, options: [])
         print("data: \( String(data: data!, encoding: .utf8) ?? "[couldn't convert to string]") ")
         
         if let outboxData = data {
-            var messages = [Message]()
+            var messages = [UserMessage]()
             let json = try? JSONSerialization.jsonObject(with: outboxData, options: [])
             print("json: \(json)")
             if let outboxJSON = json as? [ [String: String] ] {
@@ -398,12 +452,23 @@ class MessengerModel : BLEDelegate {
                     dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
                     let date = dateFormatter.date(from: messageDict["date"]!)
                     
-                    let message = Message(content: content!, sender: sender!, date: date!, recipient: recipient!)
+                    let message = UserMessage(content: content!, sender: sender!, date: date!, recipient: recipient!)
                     messages.append(message)
                 }
                 return messages
             }
         }
+        return nil
+    }
+    
+    func metadataToJSONData() -> Data? {
+        print("[MessengerModel] metadataToJSONData()")
+        print("metadata: \(self.metadata)")
+        if let json = self.metadata?.toJSON() {
+            print("metadata \(self.metadata) -> JSON \(json)")
+            return json.data(using: .utf8)
+        }
+        print("could not convert metadata '\(self.metadata)' to JSON")
         return nil
     }
 
