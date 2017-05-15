@@ -80,13 +80,36 @@ class MessengerModel : BLEDelegate {
     var chats : [User: [UserMessage]]?
     var users = [String: User]() // uuid -> username map for all known users
     var ble: BLE?
-    var metadata: Metadata?
+    var metadata = Metadata(username: SettingsModel.username, peerMap: [String : [String]]())
     
     init() {
         ble = BLE()
         ble?.delegate = self
     }
     
+ 
+    // introduce self as a central node that can be identified by the username provided at the login screen. To be called upon each connect to a peripheral.
+    /*!
+     * @method introduceSelf:
+     *
+     * @param recipient  username of peripheral to receive introduction
+     *
+     * @discussion  Write own metadata to inbox of a specific peripheral
+     *
+     */
+    func introduceSelf(recipient: String) {
+        print("[MessengerModel] introduceSelf")
+        print("metadata username is \(String(describing: self.metadata.username))")
+        let metadata = metadataToJSONData()
+        if metadata == nil {
+            print("METADATA IS NIL-- could not introduce self with nil metadata")
+        }
+        let success = writeToInbox(data: metadata!, username: recipient)
+        if !(success) {
+            print("tried to write metadata to peripheral \(recipient), but failed. Perhaps given username doesn't correspond to any of our connected peripherals.")
+        }
+        
+    }
     
     // write data to inbox of a specific peripheral,
     // probably because they're the recipient of this UserMessage
@@ -97,9 +120,9 @@ class MessengerModel : BLEDelegate {
      * @method writeToInbox:
      *
      * @param data  JSON-formatted data to be written
-     * @param uuid  UUID of peripheral whose inbox the data will be written to
+     * @param username  username of peripheral whose inbox the data will be written to
      *
-     * @return true iff given UUID corresponds to a connected peripheral
+     * @return true iff given username corresponds to a connected peripheral
      *
      * @discussion  Write data to inbox of a specific peripheral
      *
@@ -261,8 +284,6 @@ class MessengerModel : BLEDelegate {
             print("error connecting to peripheral")
         } else {
             print("connected to peripheral: \(peripheral)")
-            // Add peripheral to list of connected users.
-            // Create a user object from peripheral.
         }
         
         // TODO: keep scanning??
@@ -279,11 +300,19 @@ class MessengerModel : BLEDelegate {
     
     func didConnectToPeripheral(peripheral: CBPeripheral) {
         print("connecting to peripheral \(peripheral)...")
+        
+        // Create a user object from peripheral.
         let newUser = User(uuid: peripheral.identifier, name: peripheral.name)
+        
+        // Add peripheral to list of connected users.
         MessengerModel.shared.users[peripheral.name!] = newUser
         for delegate in delegates {
             delegate.didAddConnectedUser(.shared, user: peripheral.name!)
         }
+        
+        // Introduce self to the peripheral.
+        introduceSelf(recipient: peripheral.name!)
+        
     }
     
     func didDisconnectFromPeripheral(peripheral: CBPeripheral) {
@@ -413,8 +442,6 @@ class MessengerModel : BLEDelegate {
     }
     
     
-    
-    
     /**
      Converts JSON-formatted Data into the corresponding Message.
     */
@@ -484,7 +511,7 @@ class MessengerModel : BLEDelegate {
     func metadataToJSONData() -> Data? {
         print("[MessengerModel] metadataToJSONData()")
         print("metadata: \(self.metadata)")
-        if let json = self.metadata?.toJSON() {
+        if let json = self.metadata.toJSON() {
             print("metadata \(self.metadata) -> JSON \(json)")
             return json.data(using: .utf8)
         }
