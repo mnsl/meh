@@ -31,8 +31,10 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
             for i in 0...(selected.count-1) {
                 chatMemberList.append(selected[i].name!)
             }
-        //chatMemberList.title =  chatMemberList.joined(separator: ", ")
-        chatMembers.title =  "HIEEEEEE"
+        chatMembers.title =  chatMemberList.joined(separator: ", ")
+//        chatMembers.title =  "HIEEEEEE"
+            
+            
         }
         print("chat view loaded")
         // Load messages from the messenger model and display them.
@@ -41,7 +43,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         
         // Load old messages (currently assumes 1:1 messaging) 
         // TODO(quacht): change this when we move towards group messaging.
-        if let old_messages = MessengerModel.shared.chats?[selected[0]] {
+        if let old_messages = MessengerModel.shared.chats[selected[0]] {
             loadMessages(messages: old_messages)
         }
         

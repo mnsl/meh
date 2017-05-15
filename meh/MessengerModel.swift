@@ -77,7 +77,7 @@ class MessengerModel : BLEDelegate {
     
     var delegates = [MessengerModelDelegate]()
     
-    var chats : [User: [UserMessage]]?
+    var chats = [User: [UserMessage]]()
     var users = [String: User]() // uuid -> username map for all known users
     var ble: BLE?
     var metadata = Metadata(username: SettingsModel.username, peerMap: [String : [String]]())
@@ -251,6 +251,19 @@ class MessengerModel : BLEDelegate {
                 for delegate in self.delegates {
                     delegate.didSendMessage(MessengerModel.shared, msg: message)
                 }
+                // add this message to the chat history
+                
+                let recipientUser = self.users[message.recipient]
+                if recipientUser == nil {
+                    print("that's weird, recipientUser shouldn't be nil :(")
+                    return
+                }
+                if self.chats[recipientUser!] != nil {
+                   self.chats[recipientUser!]!.append(message)
+                } else {
+                   self.chats[recipientUser!] = [message]
+                }
+                
             } else {
                 print("failed to write to inbox of message recipient, even though they were directly connected as a peripheral")
             }
@@ -349,6 +362,7 @@ class MessengerModel : BLEDelegate {
         print("^not yet implemented")
     }
     
+    // sender arg = direct peer who either generated or forwarded this message
     func didReceiveMessage(data: Data?, sender: String) {
         // Convert the message JSON-formatted data into a Message.
         // If the recipient UUID matches that of a connected peripheral,
@@ -366,6 +380,19 @@ class MessengerModel : BLEDelegate {
                 for delegate in delegates {
                     delegate.didReceiveMessage(.shared, msg: userMessage)
                 }
+                
+                let senderUser = self.users[userMessage.sender]
+                if senderUser == nil {
+                    print("that's weird, senderUser shouldn't be nil :(")
+                    return
+                }
+                if self.chats[senderUser!] != nil {
+                    self.chats[senderUser!]!.append(userMessage)
+                } else {
+                    self.chats[senderUser!] = [userMessage]
+                }
+                
+                
             } else {
                 if userMessage != nil {
                     sendMessage(message: userMessage, exclude: sender)
