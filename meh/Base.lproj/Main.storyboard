@@ -180,6 +180,7 @@
                     </view>
                     <connections>
                         <outlet property="chatHeader" destination="Bi6-QK-igD" id="cze-uF-WeQ"/>
+                        <outlet property="chatMembers" destination="STY-LA-s12" id="w82-iF-eJr"/>
                         <outlet property="chatTextField" destination="sdt-Y6-BGv" id="RYv-e3-KVc"/>
                         <outlet property="messageInputField" destination="AHb-Qu-gGW" id="sPS-CX-aS4"/>
                         <outlet property="sendButton" destination="fCR-kF-dpZ" id="elY-5H-mcx"/>

@@ -241,6 +241,10 @@ class MessengerModel : BLEDelegate {
             let success = writeToInbox(data: messageData!, username: message.recipient)
             if success {
                 print("successfully wrote to inbox of message recipient \(message.recipient), who happened to be directly connected as a peripheral")
+                // tell ChatViewController to update view of messages.
+                for delegate in self.delegates {
+                    delegate.didSendMessage(MessengerModel.shared, msg: message)
+                }
             } else {
                 print("failed to write to inbox of message recipient, even though they were directly connected as a peripheral")
             }
@@ -296,24 +300,25 @@ class MessengerModel : BLEDelegate {
         for delegate in delegates {
             delegate.didAddConnectedUser(.shared, user: peer.name!)
         }
+        // Introduce self to the peripheral.
+        introduceSelf(recipient: peer.name!)
     }
     
     func didConnectToPeripheral(peripheral: CBPeripheral) {
         print("[MessengerModel]didConnectToPeripheral(peripheral \(peripheral))")
         // TODO(quacht): figure out where to put the code below... currently,
         // this does not work as place to introduce self because the peripheral does not know its username yet.
+        /*
+        // Create a user object from peripheral.
+        let newUser = User(uuid: peripheral.identifier, name: peripheral.name)
         
-//        // Create a user object from peripheral.
-//        let newUser = User(uuid: peripheral.identifier, name: peripheral.name)
-//        
-//        // Add peripheral to list of connected users.
-//        MessengerModel.shared.users[peripheral.name!] = newUser
-//        for delegate in delegates {
-//            delegate.didAddConnectedUser(.shared, user: peripheral.name!)
-//        }
-//        
-//        // Introduce self to the peripheral.
-//        introduceSelf(recipient: peripheral.name!)
+        // Add peripheral to list of connected users.
+        MessengerModel.shared.users[peripheral.name!] = newUser
+        for delegate in delegates {
+            delegate.didAddConnectedUser(.shared, user: peripheral.name!)
+        }
+        */
+        
     }
     
     func didDisconnectFromPeripheral(peripheral: CBPeripheral) {

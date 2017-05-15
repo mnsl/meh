@@ -15,8 +15,9 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     @IBOutlet weak var chatTextField: UITextView!
     @IBOutlet weak var messageInputField: UITextView!
     @IBOutlet weak var sendButton: UIButton!
+    @IBOutlet weak var chatMembers: UINavigationItem!
     
-    var chatMembers = [String]()
+    var chatMemberList = [String]()
     var selected = Array(UserListViewController.selectedUsers)
     
     // TODO(quacht): Preliminary character limit... will update after testing what is the maximum you can write to a characteristic.
@@ -28,11 +29,10 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         // Determine who the user is chatting with.
         if selected.count > 0 {
             for i in 0...(selected.count-1) {
-                chatMembers.append(selected[i].name!)
+                chatMemberList.append(selected[i].name!)
             }
-        // TODO(quacht): remove line below
-        chatMembers = ["Tina"]
-        self.title =  chatMembers.joined(separator: ", ")
+        //chatMemberList.title =  chatMemberList.joined(separator: ", ")
+        chatMembers.title =  "HIEEEEEE"
         }
         print("chat view loaded")
         // Load messages from the messenger model and display them.
