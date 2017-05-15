@@ -59,6 +59,8 @@ protocol BLEDelegate {
     func didConnectToPeripheral(peripheral: CBPeripheral)
     func didDisconnectFromPeripheral(peripheral: CBPeripheral)
     func didReadPeerOutbox(_ peripheral: CBPeripheral, data: Data?)
+    func didGetPeripheralUsername(peer: User)
+    
     
     // TODO: add methods that handle peripheral-side stuff
     func centralDidReadOutbox(central: UUID, outboxContents: Data?)
@@ -74,6 +76,7 @@ protocol BLEDelegate {
     func jsonDataToMessage(data: Data) -> Message?
     func metadataToJSONData() -> Data?
 
+    
 }
 
 
@@ -113,16 +116,16 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     public      var bleCentralManager:   CBCentralManager!
     //private      var activePeripheral: CBPeripheral?  // TODO: this may not be necessary ???
     
-    public var peerInboxes = [String: CBCharacteristic]()
-    public var peerOutboxes = [String: CBCharacteristic]()
-    public var peerMetadatas = [String: CBCharacteristic]()
+    public var peerInboxes = [UUID: CBCharacteristic]()
+    public var peerOutboxes = [UUID: CBCharacteristic]()
+    public var peerMetadatas = [UUID: CBCharacteristic]()
     
     private      var data:             NSMutableData? // <- not sure if this should be kept
-    public var connectedPeripherals = [String: CBPeripheral]()
+    public var connectedPeripherals = [UUID: CBPeripheral]()
     
     // Peripheral Manager Delegate stuff
     public      var blePeripheralManager: CBPeripheralManager!  // to handle connections made as a peripheral
-    public var subscribedCentrals = [String: CBCentral]()
+    public var subscribedCentrals = [UUID: CBCentral]()
     public var inbox : CBMutableCharacteristic!
     public var outbox : CBMutableCharacteristic!
     public var metadata : CBMutableCharacteristic!
@@ -139,7 +142,6 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         // TODO: do the two managers each need separate dispatch queues??
         self.bleCentralManager = CBCentralManager(delegate: self, queue: nil)
         self.blePeripheralManager = CBPeripheralManager(delegate: self, queue: nil)
-        self.data = NSMutableData()
         
         setupService()
     }
@@ -168,8 +170,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         Timer.scheduledTimer(timeInterval: timeout, target: self, selector: #selector(BLE.scanTimeout), userInfo: nil, repeats: false)
         
-        let services:[CBUUID] = [CBUUID(string: SERVICE_UUID)]
         bleCentralManager.scanForPeripherals(withServices: nil, options: nil)
+        //let services:[CBUUID] = [CBUUID(string: SERVICE_UUID)]
         //bleCentralManager.scanForPeripherals(withServices: services, options: nil)
         
         return true
@@ -181,29 +183,20 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         print("ble central manager stopped scanning")
     }
     
-    // TODO: advertise for nodes to connect to as a central node
-    // something like
-    // func startAdvertising() {
-    //  manager.startAdvertising(...)
-    // }
-
-    
     // TODO: announce to peers that new connection exists
     func connectToPeripheral(_ peripheral: CBPeripheral) -> Bool {
         
-        let peerUsername : String = peripheral.name ?? "UNKNOWN"
-        
         if bleCentralManager.state != .poweredOn {
-            print("[ERROR] Couldn´t connect to peripheral \(peerUsername)")
+            print("[ERROR] Couldn´t connect to peripheral \(peripheral)")
             return false
         }
         
-        print("[DEBUG] Connecting to peripheral: \(peerUsername)")
+        print("[DEBUG] Connecting to peripheral: \(peripheral)")
         
         bleCentralManager.connect(peripheral, options: [CBConnectPeripheralOptionNotifyOnDisconnectionKey : NSNumber(value: true)])
         
         // TODO: add peripheral to map connectedPeripherals
-        connectedPeripherals[peerUsername] = peripheral
+        self.connectedPeripherals[peripheral.identifier] = peripheral
 
         return true
     }
@@ -213,7 +206,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         if bleCentralManager.state != .poweredOn {
             
-            print("[ERROR] Couldn´t disconnect from peripheral \(peripheral.name)")
+            print("[ERROR] Couldn´t disconnect from peripheral \(peripheral)")
             return false
         }
         
@@ -223,12 +216,12 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
 
 
     // enable notifications for updates to given peripheral(as specified by the UUID)'s outbox characteristic
-    func enableNotifications(enable: Bool, username: String) {
+    func enableNotifications(enable: Bool, uuid: UUID) {
         
-        print("enabling notifications for peer with UUID \(username)")
+        print("enabling notifications for peer with uuid \(uuid)")
         
-        guard let char = peerOutboxes[username] else { return }
-        guard let peer = connectedPeripherals[username] else { return }
+        guard let char = self.peerOutboxes[uuid] else { return }
+        guard let peer = self.connectedPeripherals[uuid] else { return }
         
         peer.setNotifyValue(enable, for: char)
         
@@ -237,11 +230,11 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     }
     
     // TODO: idk what we need to do about this lol
-    func readRSSI(username: String, completion: @escaping (_ RSSI: NSNumber?, _ error: Error?) -> ()) {
+    func readRSSI(uuid: UUID, completion: @escaping (_ RSSI: NSNumber?, _ error: Error?) -> ()) {
         
         RSSICompletionHandler = completion
      
-        guard let peer = connectedPeripherals[username] else { return }
+        guard let peer = connectedPeripherals[uuid] else { return }
         peer.readRSSI()
     }
     
@@ -255,11 +248,9 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         
-        let peerUsername : String = peripheral.name ?? "UNKNOWN"
-
         
-        if let _ = self.connectedPeripherals[peerUsername] {
-            return
+        if let _ = self.connectedPeripherals[peripheral.identifier] {
+            return // already discovered...
         }
 
         //print("[DEBUG] Find peripheral: \(peripheral.identifier.uuidString) RSSI: \(RSSI)")
@@ -291,17 +282,15 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         delegate?.didConnectToPeripheral(peripheral: peripheral)
         
-        //print("current connectedPeripherals count: \(self.connectedPeripherals.count)")
-        //print("current connectedPeripherals: \(self.connectedPeripherals)")
+        print("current connectedPeripherals count: \(self.connectedPeripherals.count)")
+        print("current connectedPeripherals: \(self.connectedPeripherals)")
     }
     
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         
         var text = "[DEBUG] Disconnected from peripheral: \(peripheral)"
         
-        let peerUsername : String = peripheral.name ?? "UNKNOWN"
-        
-        self.connectedPeripherals[peerUsername] = nil
+        self.connectedPeripherals[peripheral.identifier] = nil
         
         if error != nil {
             text += ". Error: \(error!.localizedDescription)"
@@ -330,7 +319,6 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         var found_service = false
         let services = peripheral.services
         if services != nil {
-            print("in services if loop")
             for service in services! {
                 print("service:")
                 print(service)
@@ -389,19 +377,20 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         }
         
         let peerMetadata = self.delegate?.jsonDataToMessage(data: (peerMetadataChar?.value!)!) as! Metadata
+        let peerUser = User(uuid: peripheral.identifier, name: peerMetadata.username)
+        delegate?.didGetPeripheralUsername(peer: peerUser)
         
         print("peerMetadata: \(peerMetadata)")
         
         if peerInbox != nil {
-            peerInboxes[peerMetadata.username!] = peerInbox
+            peerInboxes[peripheral.identifier] = peerInbox
         }
         if peerOutbox != nil {
-            peerOutboxes[peerMetadata.username!] = peerOutbox
+            peerOutboxes[peripheral.identifier] = peerOutbox
         }
-        peerMetadatas[peerMetadata.username!] = peerMetadataChar
-
+        peerMetadatas[peripheral.identifier] = peerMetadataChar
         
-        enableNotifications(enable: true, username: peerMetadata.username!)
+        enableNotifications(enable: true, uuid: peripheral.identifier)
     }
     
     func readValue(for characteristic: CBCharacteristic) {
@@ -513,6 +502,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         // since each peer only needs to be subscribed as a central -or- connected as a peripheral
         //TODO: self.delegate?.centralDidSubscribe(central: central)
         print("\(central) just subscribed to characteristic \(characteristic)")
+        subscribedCentrals[central.identifier] = central
         
     }
     
@@ -522,6 +512,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         // (and announce connection lost??)
         //TODO: self.delegate?.centralDidUnsubscribe(central: central)
         print("\(central) just unsubscribed from characteristic \(characteristic)")
+        subscribedCentrals[central.identifier] = nil
 
     }
     

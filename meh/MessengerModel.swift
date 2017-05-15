@@ -58,6 +58,7 @@ struct User : Hashable {
     let uuid : UUID
     let name : String?
     
+    
     // conform to Hashable protocol
     var hashValue: Int {
         return uuid.hashValue
@@ -105,9 +106,19 @@ class MessengerModel : BLEDelegate {
      */
     func writeToInbox(data: Data, username: String) -> Bool {
         
-        guard let inboxCharacteristic = ble?.peerInboxes[username] else { return false }
-        guard let peer = ble?.connectedPeripherals[username] else { return false }
+        guard let uuid = self.users[username]?.uuid else {
+            print("peer \(username) is not a known user; can't write to their inbox")
+            return false
+        }
         
+        guard let inboxCharacteristic = ble?.peerInboxes[uuid] else {
+            print("could not find inbox of user \(username); are they connected as a peripheral?")
+            return false
+        }
+        guard let peer = ble?.connectedPeripherals[uuid] else {
+            print("peer \(username) is not connected as a peripheral; can't write to their inbox")
+            return false
+        }
         peer.writeValue(data, for: inboxCharacteristic, type: .withResponse)
         return true
     }
@@ -116,16 +127,14 @@ class MessengerModel : BLEDelegate {
     // node's central is subscribed to, except "exclude" 
     // (the peer who sent you the message)
     func writeToAllInboxes(data: Data, exclude: String) {
+        print("[MessengerModel] writeToAllInboxes(data: \(data), exclude: \(exclude)")
         // for every peripheral this node's central is subscribed to,
         // write the message data to their inbox.
-        for (username, _) in (ble?.connectedPeripherals)! {
+        for (username, user) in self.users {
             if username == exclude {
-                continue // don't want to send message back to peer who sent you it
+                continue
             }
-            let success = writeToInbox(data: data, username: username)
-            if !success {
-                print("failed to write to inbox of peripheral \(username)")
-            }
+            writeToInbox(data: data, username: username)
         }
     }
     
@@ -201,8 +210,10 @@ class MessengerModel : BLEDelegate {
     func sendMessage(message: UserMessage, exclude: String) {
         let messageData = messageToJSONData(message: message)
         
+        let recipientUUID = self.users[message.recipient]?.uuid
+
         // Check to see if the recipient is connected a central or peripheral node
-        if (ble?.connectedPeripherals[message.recipient] != nil) {
+        if (recipientUUID != nil && ble?.connectedPeripherals[recipientUUID!] != nil) {
             // Write to the peripheral's inbox characteristic
             let success = writeToInbox(data: messageData!, username: message.recipient)
             if success {
@@ -211,7 +222,7 @@ class MessengerModel : BLEDelegate {
                 print("failed to write to inbox of message recipient, even though they were directly connected as a peripheral")
             }
         } else {
-            if (ble?.subscribedCentrals[message.recipient] != nil) {
+            if (recipientUUID != nil && ble?.subscribedCentrals[recipientUUID!] != nil) {
                 // Update this node's outbox so that the connected central can read.
                 print("message recipient is a subscribed central and should read message from this node's outbox")
             } else {
@@ -222,7 +233,7 @@ class MessengerModel : BLEDelegate {
             
             let success = addMessageToOutbox(message: message)
             if success {
-                print("outbox successfully updated")
+                print("successfully added message to outbox")
             } else {
                 print("failed to add message to outbox :(")
             }
@@ -255,6 +266,15 @@ class MessengerModel : BLEDelegate {
         }
         
         // TODO: keep scanning??
+    }
+    
+    func didGetPeripheralUsername(peer: User) {
+        print("[MessengerModel] didGetPeripheralUsername(peer: \(peer)")
+        
+        MessengerModel.shared.users[peer.name!] = peer
+        for delegate in delegates {
+            delegate.didAddConnectedUser(.shared, user: peer.name!)
+        }
     }
     
     func didConnectToPeripheral(peripheral: CBPeripheral) {
