@@ -47,7 +47,6 @@ struct UserMessage : Message, Hashable {
 }
 
 struct Metadata : Message {
-    
     let type = "Metadata"
     
     let username : String?
@@ -81,6 +80,10 @@ class MessengerModel : BLEDelegate {
     var users = [String: User]() // uuid -> username map for all known users
     var ble: BLE?
     var metadata = Metadata(username: SettingsModel.username, peerMap: [String : [String]]())
+    
+    
+    var messagesAwaitingACK = Set<UserMessage>()
+    
     
     init() {
         ble = BLE()
@@ -232,6 +235,8 @@ class MessengerModel : BLEDelegate {
         // else stick the message in this node's peripheral's outbox.
         
         let message = UserMessage(content: message, sender: SettingsModel.username!, date: Date(), recipient: recipient)
+        messagesAwaitingACK.update(with: message)
+        
         // TODO(quacht): update the chat dictionary (so that chat history can show up accordingly on chat view controller)
         sendMessage(message: message, exclude: SettingsModel.username!)
     }
@@ -391,15 +396,8 @@ class MessengerModel : BLEDelegate {
                 } else {
                     self.chats[senderUser!] = [userMessage]
                 }
-                
-                
             } else {
-                if userMessage != nil {
                     sendMessage(message: userMessage, exclude: sender)
-                } else {
-                    print("userMessage was nil...")
-                }
-                
             }
         } else {
             let metadata = message as! Metadata
@@ -500,6 +498,7 @@ class MessengerModel : BLEDelegate {
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
                 let date = dateFormatter.date(from: dict["date"] as! String)
+                let uuid = dict["uuid"] as! String
                 
                 let msg = UserMessage(content: content, sender: sender, date: date!, recipient: recipient)
                 print("UserMessage: \(msg)")

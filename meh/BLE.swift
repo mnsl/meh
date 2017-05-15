@@ -367,6 +367,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
                 peerInbox = characteristic
             } else if charUUID == CHAR_OUTBOX_UUID {
                 print("discovered outbox characteristic \(characteristic) for peripheral \(peripheral)")
+                //peripheral.readValue(for: characteristic) TODO
                 peerOutbox = characteristic
             } else if charUUID == CHAR_METADATA_UUID {
                 print("discovered metadata characteristic \(characteristic) for peripheral \(peripheral)")
