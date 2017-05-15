@@ -299,33 +299,42 @@ class MessengerModel : BLEDelegate {
     }
     
     func didConnectToPeripheral(peripheral: CBPeripheral) {
-        print("connecting to peripheral \(peripheral)...")
+        print("[MessengerModel]didConnectToPeripheral(peripheral \(peripheral))")
+        // TODO(quacht): figure out where to put the code below... currently,
+        // this does not work as place to introduce self because the peripheral does not know its username yet.
         
-        // Create a user object from peripheral.
-        let newUser = User(uuid: peripheral.identifier, name: peripheral.name)
-        
-        // Add peripheral to list of connected users.
-        MessengerModel.shared.users[peripheral.name!] = newUser
-        for delegate in delegates {
-            delegate.didAddConnectedUser(.shared, user: peripheral.name!)
-        }
-        
-        // Introduce self to the peripheral.
-        introduceSelf(recipient: peripheral.name!)
-        
+//        // Create a user object from peripheral.
+//        let newUser = User(uuid: peripheral.identifier, name: peripheral.name)
+//        
+//        // Add peripheral to list of connected users.
+//        MessengerModel.shared.users[peripheral.name!] = newUser
+//        for delegate in delegates {
+//            delegate.didAddConnectedUser(.shared, user: peripheral.name!)
+//        }
+//        
+//        // Introduce self to the peripheral.
+//        introduceSelf(recipient: peripheral.name!)
     }
     
     func didDisconnectFromPeripheral(peripheral: CBPeripheral) {
         // TODO: broadcast "lostPeer" message
         // Remove peripheral for Messenger Model's user list.
         print("disconnected from peripheral \(peripheral)...")
-        MessengerModel.shared.users.removeValue(forKey: peripheral.name!)
-        // Tell view controller delegate to update list of connected users
         
-        // view controller delegate should update list of connected users
-        for delegate in delegates {
-            delegate.didDisconnectFromUser(.shared, user: peripheral.name!)
+        for (_, user) in MessengerModel.shared.users {
+            if (user.uuid == peripheral.identifier) {
+                print("removing associated user \(user)")
+                MessengerModel.shared.users.removeValue(forKey: user.name!)
+                
+                // view controller delegate should update list of connected users
+                for delegate in delegates {
+                    delegate.didDisconnectFromUser(.shared, user: user.name!)
+                }
+                // hopefully only one user associated with this identifier??
+                break
+            }
         }
+
     }
     
     func centralDidReadOutbox(central: UUID, outboxContents: Data?) {
