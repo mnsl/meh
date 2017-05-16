@@ -100,6 +100,38 @@ class MessengerModel : BLEDelegate {
         ble?.delegate = self
     }
     
+    /*!
+     * @method getHopCounts:
+     *
+     * @return  dictionary mapping each of the other users in the network to the hopCount
+     *
+     */
+    func getHopCounts() -> Dictionary<String, Int> {
+        let peerMap = self.metadata.peerMap
+        var queue = [[self.metadata.username]]
+        var visited = Set<String>()
+        var hopCounts = Dictionary<String, Int>()
+        
+        while queue.count != 0 {
+            var currentPath = queue.first
+            queue.remove(at: 0)
+            var currentNode = currentPath?.last as! String
+            var neighbors = peerMap[currentNode]
+            visited.insert(currentNode)
+            
+            for neighbor in neighbors! {
+                if visited.contains(neighbor) {
+                    var newPath = Array(currentPath!)
+                    newPath.append(neighbor)
+                    queue.append(newPath)
+                    var pathLength = newPath.count
+                    hopCounts[neighbor] = pathLength - 1
+                }
+            }
+        
+        }
+    return hopCounts
+    }
  
     // introduce self as a central node that can be identified by the username provided at the login screen. To be called upon each connect to a peripheral.
     /*!
