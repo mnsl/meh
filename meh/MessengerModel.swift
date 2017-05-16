@@ -28,34 +28,44 @@ protocol Message : JSONSerializable {
     var type: String { get }
 }
 
+struct Outbox : JSONSerializable {
+    var messages = [Message]()
+}
+
+struct ACK : Message {
+    let type = "ACK"
+    let origin : String
+    let recipient : String
+}
+
 
 struct UserMessage : Message, Hashable {
     let type = "UserMessage"
     let content : String
-    let sender : String
+    let origin : String
     let date: Date
     let recipient : String
     
     // conform to Hashable protocol
     var hashValue: Int {
-        return content.hashValue*2 + sender.hashValue*3 + date.hashValue*5 + recipient.hashValue*7
+        return "\(type),\(content),\(origin),\(date),\(recipient)".hashValue
     }
     
     static func == (lhs: UserMessage, rhs: UserMessage) -> Bool {
-        return lhs.content == rhs.content && lhs.sender == rhs.sender && lhs.recipient == rhs.recipient && lhs.date == rhs.date
+        return lhs.hashValue == rhs.hashValue
     }
 }
 
 struct Metadata : Message {
     let type = "Metadata"
     
-    let username : String?
-    let peerMap : [String: [String]]
+    let username : String
+    var peerMap : [String: [String]]
 }
 
 struct User : Hashable {
     let uuid : UUID
-    let name : String?
+    let name : String
     
     
     // conform to Hashable protocol
@@ -79,7 +89,7 @@ class MessengerModel : BLEDelegate {
     var chats = [User: [UserMessage]]()
     var users = [String: User]() // uuid -> username map for all known users
     var ble: BLE?
-    var metadata = Metadata(username: SettingsModel.username, peerMap: [String : [String]]())
+    var metadata = Metadata(username: SettingsModel.username!, peerMap: [String : [String]]())
     
     
     var messagesAwaitingACK = Set<UserMessage>()
@@ -234,7 +244,7 @@ class MessengerModel : BLEDelegate {
         
         // else stick the message in this node's peripheral's outbox.
         
-        let message = UserMessage(content: message, sender: SettingsModel.username!, date: Date(), recipient: recipient)
+        let message = UserMessage(content: message, origin: SettingsModel.username!, date: Date(), recipient: recipient)
         messagesAwaitingACK.update(with: message)
         
         // TODO(quacht): update the chat dictionary (so that chat history can show up accordingly on chat view controller)
@@ -298,10 +308,8 @@ class MessengerModel : BLEDelegate {
             if !(ble?.startScanning(timeout: MessengerModel.kBLE_SCAN_TIMEOUT))! {
                 print("error scanning; central manager not powered on?")
             } else {
-                print("started scanning")
+                print("this central started scanning")
             }
-            
-            // TODO: start advertising node's peripheral
         }
     }
     
@@ -313,19 +321,38 @@ class MessengerModel : BLEDelegate {
         } else {
             print("connected to peripheral: \(peripheral)")
         }
-        
-        // TODO: keep scanning??
     }
     
-    func didGetPeripheralUsername(peer: User) {
-        print("[MessengerModel] didGetPeripheralUsername(peer: \(peer)")
+    func didGetPeripheralMetadata(peripheral: CBPeripheral, metadata: Metadata) {
+        print("[MessengerModel] didGetPeripheralMetadata(metadata: \(metadata)")
         
-        MessengerModel.shared.users[peer.name!] = peer
+        // update
+        let peer = User(uuid: peripheral.identifier, name: metadata.username)
+        self.users[peer.name] = peer
+        if self.metadata.peerMap[SettingsModel.username!] == nil {
+           self.metadata.peerMap[SettingsModel.username!] = [metadata.username]
+        } else {
+            self.metadata.peerMap[SettingsModel.username!]!.append(metadata.username)
+        }
+        
+        // If this is the first peer we're connecting to, 
+        // use their metadata to fill in our peerMap
+        if ble?.connectedPeripherals.count == 1 {
+            for (username, peers) in metadata.peerMap {
+                if username == self.metadata.username { continue }
+                self.metadata.peerMap[username] = peers
+            }
+        }
+
         for delegate in delegates {
-            delegate.didAddConnectedUser(.shared, user: peer.name!)
+            delegate.didAddConnectedUser(.shared, user: peer.name)
         }
         // Introduce self to the peripheral.
-        introduceSelf(recipient: peer.name!)
+        introduceSelf(recipient: peer.name)
+        
+        // Write our updated metadata to our metadata characteristic
+        // for connected centrals to read
+        updateSelfMetadata()
     }
     
     func didConnectToPeripheral(peripheral: CBPeripheral) {
@@ -334,26 +361,40 @@ class MessengerModel : BLEDelegate {
 
     }
     
+    // Remove peripheral from list of direct peers in this node's peerMap and update delegates
     func didDisconnectFromPeripheral(peripheral: CBPeripheral) {
-        // TODO: broadcast "lostPeer" message
-        // Remove peripheral for Messenger Model's user list.
         print("disconnected from peripheral \(peripheral)...")
-        updateSelfMetadata() // update metadata just cause
         
-        for (_, user) in MessengerModel.shared.users {
-            if (user.uuid == peripheral.identifier) {
-                print("removing associated user \(user)")
-                MessengerModel.shared.users.removeValue(forKey: user.name!)
+        for (_, peer) in MessengerModel.shared.users {
+            if (peer.uuid == peripheral.identifier) {
+                var peerIndex : Int? = nil
+                if let peers = self.metadata.peerMap[self.metadata.username] {
+                    for i in 0 ..< peers.count {
+                        if peers[i] == peer.name {
+                            peerIndex = i
+                            break
+                        }
+                    }
+                    if peerIndex != nil {
+                        self.metadata.peerMap[self.metadata.username]!.remove(at: peerIndex!)
+                        print("removed \(peer.name) from the list of direct peers in this node's peerMap")
+                    } else {
+                        print("peer \(peer.name) just disconnected but was not listed as a direct peer in this node's peerMap??")
+                    }
+                }
                 
                 // view controller delegate should update list of connected users
                 for delegate in delegates {
-                    delegate.didDisconnectFromUser(.shared, user: user.name!)
+                    delegate.didDisconnectFromUser(.shared, user: peer.name)
                 }
                 // hopefully only one user associated with this identifier??
                 break
             }
         }
-
+        
+        // Write our updated metadata to our metadata characteristic
+        // for connected centrals to read
+        updateSelfMetadata()
     }
     
     func centralDidReadOutbox(central: UUID, outboxContents: Data?) {
@@ -386,7 +427,7 @@ class MessengerModel : BLEDelegate {
                     delegate.didReceiveMessage(.shared, msg: userMessage)
                 }
                 
-                let senderUser = self.users[userMessage.sender]
+                let senderUser = self.users[userMessage.origin]
                 if senderUser == nil {
                     print("that's weird, senderUser shouldn't be nil :(")
                     return
@@ -405,6 +446,18 @@ class MessengerModel : BLEDelegate {
     
             if metadata.username != sender {
                 print("sender \(sender) did not match metadata name \(metadata.username)")
+            }
+            
+            // update the peripheral's list of neighbors in our peerMap
+            // this works for two hops.
+            // TODO: in general, if we are N degrees separated from a user
+            // and the peripheral is less than N degrees away, 
+            // update our peerMap entry for that user with the corresponding
+            // entry in this peer's metadata
+            if let peripheralNeighbors = metadata.peerMap[metadata.username] {
+                self.metadata.peerMap[metadata.username] = peripheralNeighbors
+            } else {
+                print("this peripheral doesn't have an entry for itself in its own peerMap. That seems wrong...")
             }
 
         }
@@ -426,27 +479,14 @@ class MessengerModel : BLEDelegate {
     
     func centralDidSubscribe(central: CBCentral) {
         print("central \(central) just subscribed")
-        // TODO: update UUID -> username map somehow... central doesn't have a "name"
-        // TODO: implement this stuff
-        /*
-        let newUser = User(uuid: central.identifier, name: )
-        MessengerModel.shared.users[central] = newUser
-        for delegate in delegates {
-            delegate.didAddConnectedUser(.shared, user: central)
-        }
-         */
+        // TODO: update UUID -> username map when central introduces itself (not in this method)
         updateSelfMetadata()
     }
     
     func centralDidUnsubscribe(central: CBCentral) {
         print("central \(central) just unsubscribed")
-        //TODO: implement this stuff
-        /**
-        MessengerModel.shared.users.removeValue(forKey: central.name!)
-        for delegate in delegates {
-            delegate.didDisconnectFromUser(.shared, user: central)
-        }
-        */
+        // TODO: remove central from direct peers in peerMap?
+        // still not sure if central -> peripheral messaging even works :(
     }
     
     /**
@@ -464,7 +504,12 @@ class MessengerModel : BLEDelegate {
     
     func outboxToJSONData(outbox: [UserMessage]) -> Data? {
         print("outboxToJSONData not implemented")
-        return nil // TODO
+        if let json = Outbox(messages: outbox).toJSON() {
+            return json.data(using: .utf8)
+        } else {
+            print("could not convert '\(outbox)' to JSON")
+            return nil
+        }
     }
     
     
@@ -481,10 +526,9 @@ class MessengerModel : BLEDelegate {
      Converts JSON-formatted Data into the corresponding Message.
     */
     func jsonDataToMessage(data: Data) -> Message? {
-        print("data: \( String(data: data, encoding: .utf8) ?? "[couldn't convert to string]") ")
+        print("[MessengerModel] jsonDataToMessage(data: \( String(data: data, encoding: .utf8) ?? "[couldn't convert to string]"))")
 
         let json = try? JSONSerialization.jsonObject(with: data, options: [])
-        print("json: \(json)")
         
         if let dict = json as? [String: Any] {
             print("dict: \(dict)")
@@ -493,26 +537,24 @@ class MessengerModel : BLEDelegate {
             if type == "UserMessage" {
                 print("jsonDataToMessage called for message: ")
                 let content = dict["content"] as! String
-                let sender = dict["sender"] as! String
+                let sender = dict["origin"] as! String
                 let recipient = dict["recipient"] as! String
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
                 let date = dateFormatter.date(from: dict["date"] as! String)
-                let uuid = dict["uuid"] as! String
                 
-                let msg = UserMessage(content: content, sender: sender, date: date!, recipient: recipient)
+                let msg = UserMessage(content: content, origin: sender, date: date!, recipient: recipient)
                 print("UserMessage: \(msg)")
                 return msg
             } else {
                 print("jsonDataToMessage called for metadata... ")
                 let username = dict["username"] as! String
+                let peerMap =  dict["peerMap"] as! [String: [String]]
                 
-                // TODO: pull out peerMap
-                let metadata = Metadata(username: username, peerMap: [String : [String]]())
+                let metadata = Metadata(username: username, peerMap: peerMap)
                 return metadata
             }
         }
-   
         return nil
     }
 
@@ -527,13 +569,13 @@ class MessengerModel : BLEDelegate {
             if let outboxJSON = json as? [ [String: String] ] {
                 for messageDict in outboxJSON {
                     let content = messageDict["content"]
-                    let sender = messageDict["sender"]
+                    let sender = messageDict["origin"]
                     let recipient = messageDict["recipient"]
                     let dateFormatter = DateFormatter()
                     dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
                     let date = dateFormatter.date(from: messageDict["date"]!)
                     
-                    let message = UserMessage(content: content!, sender: sender!, date: date!, recipient: recipient!)
+                    let message = UserMessage(content: content!, origin: sender!, date: date!, recipient: recipient!)
                     messages.append(message)
                 }
                 return messages

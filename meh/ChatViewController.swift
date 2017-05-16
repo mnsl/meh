@@ -32,7 +32,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         // Determine who the user is chatting with.
         if selected.count > 0 {
             for i in 0...(selected.count-1) {
-                chatMemberList.append(selected[i].name!)
+                chatMemberList.append(selected[i].name)
             }
         chatMembers.title =  chatMemberList.joined(separator: ", ")
 //        chatMembers.title =  "HIEEEEEE"
@@ -82,7 +82,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     func messageToString(message: UserMessage) -> String {
         // Given a message object, return string representation to be printed to the chat.
         
-        return message.sender + ": " + message.content + "\n"
+        return message.origin + ": " + message.content + "\n"
     }
     
     
@@ -96,7 +96,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         let message = messageInputField.text;
         print("sending \"", message as Any, "\"")
         
-        MessengerModel.shared.sendMessage(message: message!, recipient: selected[0].name!)
+        MessengerModel.shared.sendMessage(message: message!, recipient: selected[0].name)
         // clear message input field
         messageInputField.text = ""
     }

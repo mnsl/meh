@@ -72,3 +72,9 @@ extension UUID: JSONRepresentable {
     }
 }
 
+extension Set : JSONRepresentable {
+    var JSONRepresentation: AnyObject {
+        return Array(self) as AnyObject
+    }
+}
+

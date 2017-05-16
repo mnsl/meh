@@ -59,7 +59,7 @@ protocol BLEDelegate {
     func didConnectToPeripheral(peripheral: CBPeripheral)
     func didDisconnectFromPeripheral(peripheral: CBPeripheral)
     func didReadPeerOutbox(_ peripheral: CBPeripheral, data: Data?)
-    func didGetPeripheralUsername(peer: User)
+    func didGetPeripheralMetadata(peripheral: CBPeripheral, metadata: Metadata)
     
     
     // TODO: add methods that handle peripheral-side stuff
@@ -381,8 +381,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         if peerMetadataChar?.value != nil {
             let peerMetadata = self.delegate?.jsonDataToMessage(data: (peerMetadataChar?.value!)!) as! Metadata
-            let peerUser = User(uuid: peripheral.identifier, name: peerMetadata.username)
-            delegate?.didGetPeripheralUsername(peer: peerUser)
+            delegate?.didGetPeripheralMetadata(peripheral: peripheral, metadata: peerMetadata)
             print("peerMetadata: \(peerMetadata)")
         }
         
@@ -434,8 +433,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
                 print("msg: \(msg)")
                 let peerMetadata = msg as! Metadata
                 print("peerMetadata: \(peerMetadata)")
-                let peerUser = User(uuid: peripheral.identifier, name: peerMetadata.username)
-                delegate?.didGetPeripheralUsername(peer: peerUser)
+                delegate?.didGetPeripheralMetadata(peripheral: peripheral, metadata: peerMetadata)
             } else {
                 print("metadata characteristic value was nil...")
             }
