@@ -115,11 +115,12 @@ class MessengerModel : BLEDelegate {
      * @return  dictionary mapping each of the other users in the network to the hopCount
      *
      */
-    func getHopCounts() -> Dictionary<String, Int> {
-        let peerMap = self.metadata.peerMap
-        var queue = [[self.metadata.username]]
+    func getHopCounts(metadata : Metadata) -> Dictionary<String, Int> {
+        let peerMap = metadata.peerMap
+        var queue = [[metadata.username]]
         var visited = Set<String>()
         var hopCounts = Dictionary<String, Int>()
+        hopCounts[metadata.username] = 0
         
         while queue.count != 0 {
             let currentPath = queue.first
@@ -583,12 +584,19 @@ class MessengerModel : BLEDelegate {
             // and the peripheral is less than N degrees away, 
             // update our peerMap entry for that user with the corresponding
             // entry in this peer's metadata
-            if let peripheralNeighbors = metadata.peerMap[metadata.username] {
-                self.metadata.peerMap[metadata.username] = peripheralNeighbors
-            } else {
-                print("this peripheral doesn't have an entry for itself in its own peerMap. That seems wrong...")
+            
+            let selfHopCounts = getHopCounts(metadata: self.metadata)
+            let peerHopCounts = getHopCounts(metadata: metadata)
+            
+            print("selfHopCounts: \(selfHopCounts)")
+            print("peerHopCounts: \(peerHopCounts)")
+            
+            for (username, hopCount) in peerHopCounts {
+                if selfHopCounts[username] == nil || selfHopCounts[username]! > hopCount {
+                    print("updating peerMap entry for \(username) from \(self.metadata.peerMap[username]) to \(metadata.peerMap[username]), the value in the peerMap for user \(metadata.username)")
+                    self.metadata.peerMap[username] = metadata.peerMap[username]
+                }
             }
-
         }
     }
     
