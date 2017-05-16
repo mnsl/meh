@@ -124,9 +124,12 @@ class MessengerModel : BLEDelegate {
         
         while queue.count != 0 {
             let currentPath = queue.first
+            if currentPath == nil || currentPath!.count == 0 { continue }
             queue.remove(at: 0)
-            let currentNode = currentPath?.last!
+            let currentNode = currentPath?.last
+            if currentNode == nil { continue }
             let neighbors = peerMap[currentNode!]
+            if neighbors == nil { continue }
             visited.insert(currentNode!)
             
             for neighbor in neighbors! {

@@ -94,17 +94,20 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     
     // MARK: MessengerModelDelegate functions
     func didSendMessage(msg: UserMessage?) {
+        print("[ChatViewController] didSendMessage(msg: \(msg)")
         // Once we recieve confirmation from the Messenger model that a message has been sent, we display the message we sent.
         if msg != nil {
-        addMessageToDisplay(message: msg!)
-        self.displayMessages.append(msg!)
+            self.displayMessages.append(msg!)
+            loadMessages(messages: self.displayMessages)
         } else {
             print("Sent message is nil! --> not going to display in chat.")
         }
     }
     
     func didReceiveMessage(msg: UserMessage?) {
+        print("[ChatViewController] didReceiveMessage(msg: \(msg)")
         if msg != nil {
+            self.displayMessages.append(msg!)
             addMessageToDisplay(message: msg!)
         } else {
             print("Sent message is nil! --> not going to display in chat.")
@@ -137,6 +140,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
                            options: animationCurve,
                            animations: { self.view.layoutIfNeeded() },
                            completion: nil)
+            
         }
     }
 
