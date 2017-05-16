@@ -36,25 +36,13 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
         tableView.delegate = self
         tableView.dataSource = self
         tableView.allowsMultipleSelection = true
-        tableView.beginUpdates()
         
         // Set this view controller to be the delegate of some model that keeps track of who is on the network, and who you already know.
         MessengerModel.shared.delegates.append(self)
 
         // NOTE: in the beginning, onlineUsers is nil, because we have not been able to identify any users nearby.
-        if UserListViewController.onlineUsersArray.count == 0 {
-        print("no online users")
-        } else {
-        for i in 0...(UserListViewController.onlineUsersArray.count-1) {
-            var name = UserListViewController.onlineUsersArray[i].name
-            if name == nil {
-                name = UserListViewController.onlineUsersArray[i].uuid.uuidString
-            }
-            //addUsername(username: name!)
-        }
-
-        }
-        tableView.endUpdates()
+        UserListViewController.onlineUsersArray = Array(MessengerModel.shared.users.values)
+        tableView.reloadData()
     }
 
     func numberOfSections(in tableView: UITableView) -> Int {
@@ -102,29 +90,26 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     // indication once a message has been checked.
     
     // MARK: MessengerModelDelegate functions
-    func didSendMessage(_ model: MessengerModel, msg: UserMessage?) {
+    func didSendMessage(msg: UserMessage?) {
         // Nothing
         return
     }
     
-    func didReceiveMessage(_ model: MessengerModel, msg: UserMessage?) {
+    func didReceiveMessage(msg: UserMessage?) {
         // TODO: bold the text of the user in the userlist
         // Maintain state of what messages have been unread?
         return
     }
 
-    func didAddConnectedUser(_ model: MessengerModel, user: String) {
-        print("[UserListViewController] added connected user with username \(user)")
+    func didUpdateUsers() {
+        print("[UserListViewController] updated users")
         UserListViewController.onlineUsersArray = Array(MessengerModel.shared.users.values)
         tableView.reloadData()
     }
     
-    func didDisconnectFromUser(_ model: MessengerModel, user: String) {
-        print("[UserListViewController]  disconnected form user with username \(user)")
-        // Update onlineUsersArray
-        UserListViewController.onlineUsersArray = Array(MessengerModel.shared.users.values)
-        tableView.reloadData()
-        
+    func didReceiveAck(for msg: UserMessage) {
+        // Do nothing 
+        return
     }
     
     
