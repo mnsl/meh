@@ -15,15 +15,19 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     
     var onlineUsers = MessengerModel.shared.users
     public static var onlineUsersArray: Array<User> = []
-    public static var selectedUsers: Set = Set<User>()
+    public static var selectedUser: User? = nil
+    var selectedIndex : IndexPath? = nil
     
     // MARK: - UITableViewDataSource
     
     // TODO: could add this in order to section off the user list into available now, and known but unavailable.
     
     @IBAction func startChatButtonClick(_ sender: Any) {
-        print("starting chat with ")
-        print(UserListViewController.selectedUsers)
+        if UserListViewController.selectedUser != nil {
+            print("[UserListViewController] starting chat with \(UserListViewController.selectedUser)")
+        } else {
+            print("[UserListViewController] has no user selected!")
+        }
     }
     
     override func viewDidLoad() {
@@ -63,9 +67,7 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "UITableViewCell", for: indexPath)
-        
-        cell.accessoryType = cell.isSelected ? .checkmark : .none
-        //        cell.selectionStyle = .none // to prevent cells from being "highlighted"
+        cell.selectionStyle = .none // to prevent cells from being "highlighted"
         print(UserListViewController.onlineUsersArray[indexPath.row].name)
         cell.textLabel?.text = UserListViewController.onlineUsersArray[indexPath.row].name
         
@@ -74,16 +76,26 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-        // let selectedUser = tableView.cellForRow(at: indexPath as IndexPath)?.textLabel?.text;
+        
+        let endIndex = UserListViewController.onlineUsersArray.count - 1
+        for i in 0...endIndex {
+            if i != indexPath.row {
+                tableView.cellForRow(at: IndexPath(row: i, section: 0))?.accessoryType = .none
+            }
+        }
+        
         let selectedUser = UserListViewController.onlineUsersArray[indexPath.row]
-        UserListViewController.selectedUsers.insert(selectedUser);
+        UserListViewController.selectedUser = selectedUser
+        if selectedIndex != nil {
+            tableView.cellForRow(at: selectedIndex!)?.accessoryType = .none
+        }
+        selectedIndex = indexPath
     }
     
     func tableView(_ tableView: UITableView, didDeselectRowAt indexPath: IndexPath) {
         tableView.cellForRow(at: indexPath)?.accessoryType = .none
-//        let deselectedUser = tableView.cellForRow(at: indexPath as IndexPath)?.textLabel?.text;
-        let deselectedUser = UserListViewController.onlineUsersArray[indexPath.row];
-        UserListViewController.selectedUsers.remove(deselectedUser);
+        UserListViewController.selectedUser = nil
+        selectedIndex = nil
     }
     
     // TODO(quacht): if didRecieveMessage goes provides visual indication of a message being received, also turn off that
@@ -112,17 +124,6 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
         // Update onlineUsersArray
         UserListViewController.onlineUsersArray = Array(MessengerModel.shared.users.values)
         tableView.reloadData()
-
-        /*
-        for i in 0...(UserListViewController.onlineUsersArray.count) {
-            if (UserListViewController.onlineUsersArray[i].uuid == user) {
-                print("Found disconnected user to remove from the user list.")
-                // Update table view.
-                tableView.deleteRows(at: [IndexPath(row: i, section: 0)], with: UITableViewRowAnimation.automatic)
-
-            }
-        }
-        */
         
     }
     

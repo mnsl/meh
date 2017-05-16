@@ -21,32 +21,21 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     @IBOutlet var keyboardHeightLayoutConstraint: NSLayoutConstraint?
     
     var chatMemberList = [String]()
-    var selected = Array(UserListViewController.selectedUsers)
     
     // TODO(quacht): Preliminary character limit... will update after testing what is the maximum you can write to a characteristic.
     let message_character_limit = 10000;
    
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        // Determine who the user is chatting with.
-        if selected.count > 0 {
-            for i in 0...(selected.count-1) {
-                chatMemberList.append(selected[i].name)
-            }
-        chatMembers.title =  chatMemberList.joined(separator: ", ")
-//        chatMembers.title =  "HIEEEEEE"
-            
-            
-        }
-        print("chat view loaded")
-        // Load messages from the messenger model and display them.
         clearChatDisplay()
+        if (UserListViewController.selectedUser != nil) {
+            chatMembers.title =  UserListViewController.selectedUser?.name
+        }
         
+        print("chat view loaded")
         
-        // Load old messages (currently assumes 1:1 messaging) 
-        // TODO(quacht): change this when we move towards group messaging.
-        if let old_messages = MessengerModel.shared.chats[selected[0]] {
+        // Load old messages (currently assumes 1:1 messaging)
+        if let old_messages = MessengerModel.shared.chats[UserListViewController.selectedUser!] {
             loadMessages(messages: old_messages)
         }
         
@@ -96,7 +85,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         let message = messageInputField.text;
         print("sending \"", message as Any, "\"")
         
-        MessengerModel.shared.sendMessage(message: message!, recipient: selected[0].name)
+        MessengerModel.shared.sendMessage(message: message!, recipient: (UserListViewController.selectedUser?.name)!)
         // clear message input field
         messageInputField.text = ""
     }

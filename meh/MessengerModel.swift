@@ -113,18 +113,18 @@ class MessengerModel : BLEDelegate {
         var hopCounts = Dictionary<String, Int>()
         
         while queue.count != 0 {
-            var currentPath = queue.first
+            let currentPath = queue.first
             queue.remove(at: 0)
-            var currentNode = currentPath?.last as! String
-            var neighbors = peerMap[currentNode]
-            visited.insert(currentNode)
+            let currentNode = currentPath?.last!
+            let neighbors = peerMap[currentNode!]
+            visited.insert(currentNode!)
             
             for neighbor in neighbors! {
                 if visited.contains(neighbor) {
                     var newPath = Array(currentPath!)
                     newPath.append(neighbor)
                     queue.append(newPath)
-                    var pathLength = newPath.count
+                    let pathLength = newPath.count
                     hopCounts[neighbor] = pathLength - 1
                 }
             }
