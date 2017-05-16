@@ -48,7 +48,6 @@ extension JSONSerializable {
         
         do {
             let data = try JSONSerialization.data(withJSONObject: representation, options: [])
-            print("JSON serialized data is \(data)")
             return String(data: data, encoding: String.Encoding.utf8)
         } catch {
             print("failed to produce JSON serialized version of representation \(representation)")

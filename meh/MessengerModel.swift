@@ -11,10 +11,9 @@ import UIKit
 import CoreBluetooth
 
 protocol MessengerModelDelegate {
-    func didSendMessage(_ model: MessengerModel, msg: UserMessage?)
-    func didReceiveMessage(_ model: MessengerModel, msg: UserMessage?)
-    func didAddConnectedUser(_ model: MessengerModel, user: String)
-    func didDisconnectFromUser(_ model: MessengerModel, user: String)
+    func didSendMessage(msg: UserMessage?)
+    func didReceiveMessage(msg: UserMessage?)
+    func didUpdateUsers()
 }
 
 extension Notification.Name {
@@ -64,16 +63,15 @@ struct Metadata : Message {
 }
 
 struct User : Hashable {
-    let uuid : UUID
+    let uuid : UUID?
     let name : String
-    
     
     // conform to Hashable protocol
     var hashValue: Int {
-        return uuid.hashValue
+        return name.hashValue
     }
     static func == (lhs: User, rhs: User) -> Bool {
-        return lhs.uuid == rhs.uuid
+        return lhs.hashValue == rhs.hashValue
     }
 }
 
@@ -91,9 +89,7 @@ class MessengerModel : BLEDelegate {
     var ble: BLE?
     var metadata = Metadata(username: SettingsModel.username!, peerMap: [String : [String]]())
     
-    
     var messagesAwaitingACK = Set<UserMessage>()
-    
     
     init() {
         ble = BLE()
@@ -198,7 +194,7 @@ class MessengerModel : BLEDelegate {
         print("[MessengerModel] writeToAllInboxes(data: \(data), exclude: \(exclude)")
         // for every peripheral this node's central is subscribed to,
         // write the message data to their inbox.
-        for (username, user) in self.users {
+        for (username, _) in self.users {
             if username == exclude {
                 continue
             }
@@ -296,7 +292,7 @@ class MessengerModel : BLEDelegate {
                 print("successfully wrote to inbox of message recipient \(message.recipient), who happened to be directly connected as a peripheral")
                 // tell ChatViewController to update view of messages.
                 for delegate in self.delegates {
-                    delegate.didSendMessage(MessengerModel.shared, msg: message)
+                    delegate.didSendMessage(msg: message)
                 }
                 // add this message to the chat history
                 
@@ -377,7 +373,7 @@ class MessengerModel : BLEDelegate {
         }
 
         for delegate in delegates {
-            delegate.didAddConnectedUser(.shared, user: peer.name)
+            delegate.didUpdateUsers()
         }
         // Introduce self to the peripheral.
         introduceSelf(recipient: peer.name)
@@ -393,12 +389,30 @@ class MessengerModel : BLEDelegate {
 
     }
     
-    // Remove peripheral from list of direct peers in this node's peerMap and update delegates
+    
     func didDisconnectFromPeripheral(peripheral: CBPeripheral) {
         print("disconnected from peripheral \(peripheral)...")
         
         for (_, peer) in MessengerModel.shared.users {
             if (peer.uuid == peripheral.identifier) {
+                // Remove self from list of peripheral's direct peers
+                var selfIndex : Int? = nil
+                if let peers = self.metadata.peerMap[peer.name] {
+                    for i in 0 ..< peers.count {
+                        if peers[i] == self.metadata.username {
+                            selfIndex = i
+                            break
+                        }
+                    }
+                    if selfIndex != nil {
+                        self.metadata.peerMap[peer.name]!.remove(at: selfIndex!)
+                        print("removed self from the list of the disconnected peripheral's direct peers in this node's peerMap")
+                    } else {
+                        print("peer \(peer.name) just disconnected but this node was not listed as its direct peer in this node's peerMap??")
+                    }
+                }
+                
+                // Remove peripheral from list of direct peers in this node's peerMap
                 var peerIndex : Int? = nil
                 if let peers = self.metadata.peerMap[self.metadata.username] {
                     for i in 0 ..< peers.count {
@@ -417,7 +431,7 @@ class MessengerModel : BLEDelegate {
                 
                 // view controller delegate should update list of connected users
                 for delegate in delegates {
-                    delegate.didDisconnectFromUser(.shared, user: peer.name)
+                    delegate.didUpdateUsers()
                 }
                 // hopefully only one user associated with this identifier??
                 break
@@ -456,7 +470,7 @@ class MessengerModel : BLEDelegate {
             if userMessage.recipient == SettingsModel.username {
                 print("message received was intended for this user")
                 for delegate in delegates {
-                    delegate.didReceiveMessage(.shared, msg: userMessage)
+                    delegate.didReceiveMessage(msg: userMessage)
                 }
                 
                 let senderUser = self.users[userMessage.origin]
@@ -504,7 +518,7 @@ class MessengerModel : BLEDelegate {
 
         for message in messages! {
             for delegate in delegates {
-                delegate.didReceiveMessage(.shared, msg: message)
+                delegate.didReceiveMessage(msg: message)
             }
         }
     }
@@ -591,7 +605,6 @@ class MessengerModel : BLEDelegate {
     }
 
     func jsonDataToOutbox(data: Data?) -> [UserMessage]? {
-        //let json = try? JSONSerialization.jsonObject(with: data, options: [])
         print("data: \( String(data: data!, encoding: .utf8) ?? "[couldn't convert to string]") ")
         
         if let outboxData = data {
@@ -618,7 +631,6 @@ class MessengerModel : BLEDelegate {
     
     func metadataToJSONData() -> Data? {
         print("[MessengerModel] metadataToJSONData()")
-        print("metadata: \(self.metadata)")
         if let json = self.metadata.toJSON() {
             print("metadata \(self.metadata) -> JSON \(json)")
             return json.data(using: .utf8)

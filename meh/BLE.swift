@@ -249,7 +249,6 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         
-        
         if let _ = self.connectedPeripherals[peripheral.identifier] {
             return // already discovered...
         }
@@ -276,10 +275,8 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         
         print("[DEBUG] Connected to peripheral \(peripheral)")
         
-        
         peripheral.delegate = self
         peripheral.discoverServices([CBUUID(string: SERVICE_UUID)])
-        
         
         delegate?.didConnectToPeripheral(peripheral: peripheral)
         

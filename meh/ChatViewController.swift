@@ -91,7 +91,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     }
     
     // MARK: MessengerModelDelegate functions
-    func didSendMessage(_ model: MessengerModel, msg: UserMessage?) {
+    func didSendMessage(msg: UserMessage?) {
         // Once we recieve confirmation from the Messenger model that a message has been sent, we display the message we sent.
         if msg != nil {
         addMessageToDisplay(message: msg!)
@@ -100,7 +100,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         }
     }
     
-    func didReceiveMessage(_ model: MessengerModel, msg: UserMessage?) {
+    func didReceiveMessage(msg: UserMessage?) {
         if msg != nil {
             addMessageToDisplay(message: msg!)
         } else {
@@ -108,16 +108,10 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         }
     }
     
-    func didAddConnectedUser(_ model: MessengerModel, user: String) {
+    func didUpdateUsers() {
         // Do nothing
         return
     }
-    
-    func didDisconnectFromUser(_ model: MessengerModel, user: String) {
-        // Do nothing
-        return
-    }
-
     
     func keyboardNotification(notification: NSNotification) {
         if let userInfo = notification.userInfo {
