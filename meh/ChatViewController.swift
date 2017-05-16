@@ -143,7 +143,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     func didReceiveAck(for msg: UserMessage) {
         print("[ChatViewController] didReceiveAck(for: \(msg)")
         if let index = self.displayMessages.index(of: msg) {
-            let acknowledgedMessage = UserMessage(content: msg.content + " [received]", origin: msg.origin, date: msg.date, recipient: msg.recipient)
+            let acknowledgedMessage = UserMessage(content: msg.content + " [delivered]", origin: msg.origin, date: msg.date, recipient: msg.recipient)
             self.displayMessages[index] = acknowledgedMessage
             print("self.displayMessages = \(self.displayMessages)")
             
