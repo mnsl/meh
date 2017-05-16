@@ -22,6 +22,8 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     
     var chatMemberList = [String]()
     
+    var displayMessages = [UserMessage]()
+    
     // TODO(quacht): Preliminary character limit... will update after testing what is the maximum you can write to a characteristic.
     let message_character_limit = 10000;
    
@@ -62,11 +64,11 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     }
     
     func loadMessages(messages: [UserMessage]){
+        chatTextField.text = ""
         for message in messages {
             addMessageToDisplay(message: message)
         }
     }
-    
     
     func messageToString(message: UserMessage) -> String {
         // Given a message object, return string representation to be printed to the chat.
@@ -95,6 +97,7 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         // Once we recieve confirmation from the Messenger model that a message has been sent, we display the message we sent.
         if msg != nil {
         addMessageToDisplay(message: msg!)
+        self.displayMessages.append(msg!)
         } else {
             print("Sent message is nil! --> not going to display in chat.")
         }
@@ -137,4 +140,19 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         }
     }
 
+    func didReceiveAck(for msg: UserMessage) {
+        print("[ChatViewController] didReceiveAck(for: \(msg)")
+        if let index = self.displayMessages.index(of: msg) {
+            let acknowledgedMessage = UserMessage(content: msg.content + " [received]", origin: msg.origin, date: msg.date, recipient: msg.recipient)
+            self.displayMessages[index] = acknowledgedMessage
+            print("self.displayMessages = \(self.displayMessages)")
+            
+            clearChatDisplay()
+            loadMessages(messages: self.displayMessages)
+
+        } else {
+            print("received ACK for a message not in the chat field...")
+        }
+        
+    }
 }

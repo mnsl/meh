@@ -14,6 +14,7 @@ protocol MessengerModelDelegate {
     func didSendMessage(msg: UserMessage?)
     func didReceiveMessage(msg: UserMessage?)
     func didUpdateUsers()
+    func didReceiveAck(for: UserMessage)
 }
 
 extension Notification.Name {
@@ -31,10 +32,20 @@ struct Outbox : JSONSerializable {
     var messages = [Message]()
 }
 
-struct ACK : Message {
+struct ACK : Message, Hashable {
     let type = "ACK"
-    let origin : String
-    let recipient : String
+    let originalMessageOrigin : String
+    let originalMessageRecipient : String
+    let originalMessageHash : Int
+    
+    // conform to Hashable protocol
+    var hashValue: Int {
+        return "\(type),\(originalMessageOrigin),\(originalMessageRecipient),\(originalMessageHash)".hashValue
+    }
+    
+    static func == (lhs: ACK, rhs: ACK) -> Bool {
+        return lhs.hashValue == rhs.hashValue
+    }
 }
 
 
@@ -90,6 +101,8 @@ class MessengerModel : BLEDelegate {
     var metadata = Metadata(username: SettingsModel.username!, peerMap: [String : [String]]())
     
     var messagesAwaitingACK = Set<UserMessage>()
+    var doNotForward = Set<UserMessage>()
+    var doNotForwardACK = Set<ACK>()
     
     init() {
         ble = BLE()
@@ -190,7 +203,7 @@ class MessengerModel : BLEDelegate {
     // write message to the inboxes of all peripherals this
     // node's central is subscribed to, except "exclude" 
     // (the peer who sent you the message)
-    func writeToAllInboxes(data: Data, exclude: String) {
+    func writeToAllInboxes(data: Data, exclude: String?) {
         print("[MessengerModel] writeToAllInboxes(data: \(data), exclude: \(exclude)")
         // for every peripheral this node's central is subscribed to,
         // write the message data to their inbox.
@@ -274,12 +287,11 @@ class MessengerModel : BLEDelegate {
         
         let message = UserMessage(content: message, origin: SettingsModel.username!, date: Date(), recipient: recipient)
         messagesAwaitingACK.update(with: message)
-        
-        // TODO(quacht): update the chat dictionary (so that chat history can show up accordingly on chat view controller)
+    
         sendMessage(message: message, exclude: SettingsModel.username!)
     }
     
-    func sendMessage(message: UserMessage, exclude: String) {
+    func sendMessage(message: UserMessage, exclude: String?) {
         let messageData = messageToJSONData(message: message)
         
         let recipientUUID = self.users[message.recipient]?.uuid
@@ -290,6 +302,10 @@ class MessengerModel : BLEDelegate {
             let success = writeToInbox(data: messageData!, username: message.recipient)
             if success {
                 print("successfully wrote to inbox of message recipient \(message.recipient), who happened to be directly connected as a peripheral")
+                
+                // do not reforward this message
+                self.doNotForward.update(with: message)
+                
                 // tell ChatViewController to update view of messages.
                 for delegate in self.delegates {
                     delegate.didSendMessage(msg: message)
@@ -326,8 +342,39 @@ class MessengerModel : BLEDelegate {
             } else {
                 print("failed to add message to outbox :(")
             }
-            
         }
+    }
+    
+    func sendACK(ack: ACK, exclude: String?) {
+        let ackData = messageToJSONData(message: ack)
+        
+        let recipientUUID = self.users[ack.originalMessageOrigin]?.uuid
+        
+        // Check to see if the recipient is connected a central or peripheral node
+        if (recipientUUID != nil && ble?.connectedPeripherals[recipientUUID!] != nil) {
+            // Write to the peripheral's inbox characteristic
+            let success = writeToInbox(data: ackData!, username: ack.originalMessageOrigin)
+            if success {
+                print("successfully wrote ACK to inbox of message recipient \(ack.originalMessageOrigin), who happened to be directly connected as a peripheral")
+                
+                // do not reforward this ack
+                self.doNotForwardACK.update(with: ack)
+                
+            } else {
+                print("failed to write to inbox of message recipient, even though they were directly connected as a peripheral")
+            }
+        } else {
+            if (recipientUUID != nil && ble?.subscribedCentrals[recipientUUID!] != nil) {
+                // Update this node's outbox so that the connected central can read.
+                print("message recipient is a subscribed central and should read message from this node's outbox")
+            } else {
+                // The UUID is of a recipient that is not currently connected.
+                print("ack recipient is not a direct peer, so writing to all connected peripherals' inboxes")
+                writeToAllInboxes(data: ackData!, exclude: exclude)
+            }
+
+        }
+
     }
     
     func didUpdateState(state: BLEState) {
@@ -384,14 +431,13 @@ class MessengerModel : BLEDelegate {
     }
     
     func didConnectToPeripheral(peripheral: CBPeripheral) {
-        print("[MessengerModel]didConnectToPeripheral(peripheral \(peripheral))")
+        print("[MessengerModel] didConnectToPeripheral(peripheral \(peripheral))")
         updateSelfMetadata() // update metadata so peripheral can read from it
-
     }
     
     
     func didDisconnectFromPeripheral(peripheral: CBPeripheral) {
-        print("disconnected from peripheral \(peripheral)...")
+        print("[MessengerModel] didDisconnectFromPeripheral(peripheral: \(peripheral))")
         
         for (_, peer) in MessengerModel.shared.users {
             if (peer.uuid == peripheral.identifier) {
@@ -467,24 +513,61 @@ class MessengerModel : BLEDelegate {
 
         if message?.type == "UserMessage" {
             let userMessage = message as! UserMessage
-            if userMessage.recipient == SettingsModel.username {
+            if userMessage.recipient == self.metadata.username {
                 print("message received was intended for this user")
                 for delegate in delegates {
                     delegate.didReceiveMessage(msg: userMessage)
                 }
                 
-                let senderUser = self.users[userMessage.origin]
-                if senderUser == nil {
-                    print("that's weird, senderUser shouldn't be nil :(")
+                let ack = ACK(originalMessageOrigin: userMessage.origin, originalMessageRecipient: userMessage.recipient, originalMessageHash: userMessage.hashValue)
+                sendACK(ack: ack, exclude: nil)
+                
+                let origin = self.users[userMessage.origin]
+                if origin == nil {
+                    print("that's weird, origin shouldn't be nil :(")
                     return
                 }
-                if self.chats[senderUser!] != nil {
-                    self.chats[senderUser!]!.append(userMessage)
+                if self.chats[origin!] != nil {
+                    self.chats[origin!]!.append(userMessage)
                 } else {
-                    self.chats[senderUser!] = [userMessage]
+                    self.chats[origin!] = [userMessage]
                 }
             } else {
+                if self.doNotForward.contains(userMessage) {
+                    print("message \(userMessage) has already been forwarded / sent from this node")
+                } else {
+                    print("forwarding message \(userMessage)")
+                    self.doNotForward.update(with: userMessage)
                     sendMessage(message: userMessage, exclude: sender)
+                }
+            }
+        } else if message?.type == "ACK" {
+            let ack = message as! ACK
+            if ack.originalMessageOrigin == self.metadata.username {
+                var acknowledgedMessage : UserMessage? = nil
+                for msg in self.messagesAwaitingACK {
+                    if msg.hashValue == ack.originalMessageHash {
+                        acknowledgedMessage = msg
+                        break
+                    }
+                }
+                if acknowledgedMessage != nil {
+                    print("received ACK for message \(acknowledgedMessage)")
+                    self.messagesAwaitingACK.remove(acknowledgedMessage!)
+                    for delegate in self.delegates {
+                        delegate.didReceiveAck(for: acknowledgedMessage!)
+                    }
+                } else {
+                    print("received ACK for a message this node sent, but ACK hash didn't match any message awaiting ACK")
+                }
+            } else {
+                if self.doNotForwardACK.contains(ack) {
+                    print("message \(ack) has already been forwarded / sent from this node")
+                } else {
+                    print("forwarding message \(ack)")
+                    self.doNotForwardACK.update(with: ack)
+                    sendACK(ack: ack, exclude: sender)
+                }
             }
         } else {
             let metadata = message as! Metadata
@@ -539,7 +622,7 @@ class MessengerModel : BLEDelegate {
      Converts a Message to JSON-formatted Data to be loaded into a CBCharacteristic's "value" attribute.
      If the Message can't be converted, returns nil.
     */
-    func messageToJSONData(message: UserMessage) -> Data? {
+    func messageToJSONData(message: Message) -> Data? {
         if let json = message.toJSON() {
             print("message \(message) -> JSON \(json)")
             return json.data(using: .utf8)
@@ -592,6 +675,14 @@ class MessengerModel : BLEDelegate {
                 let msg = UserMessage(content: content, origin: sender, date: date!, recipient: recipient)
                 print("UserMessage: \(msg)")
                 return msg
+            } else if type == "ACK" {
+                print("jsonDataToMessage called for ACK...")
+                let origin = dict["originalMessageOrigin"] as! String
+                let recipient = dict["originalMessageRecipient"] as! String
+                let hash = dict["originalMessageHash"] as! Int
+                
+                let ack = ACK(originalMessageOrigin: origin, originalMessageRecipient: recipient, originalMessageHash: hash)
+                return ack
             } else {
                 print("jsonDataToMessage called for metadata... ")
                 let username = dict["username"] as! String
