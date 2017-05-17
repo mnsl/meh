@@ -14,7 +14,7 @@ struct LogEntry {
     let hops : Int
     var pingsSent : Int
     var acks : Int
-    var avgLatency : Int?
+    var avgLatency : Double?
 }
 
 class TestingViewController: UIViewController, UITableViewDataSource, MessengerModelDelegate, UITableViewDelegate {
@@ -72,6 +72,7 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
     func getPathToLogFile() -> String {
         let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
         let filePath = documentsPath + "/" + DATA_FILE_NAME
+        print("[TestingViewController] filepath: \(filePath)")
         return filePath
     }
     
@@ -137,19 +138,6 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
     
     // MARK: Test methods
     
-    func testDirectPeers() {
-        if MessengerModel.shared.metadata.peerMap[SettingsModel.username!] == nil {
-            print("testDirectPeers cannot run without direct peers...")
-            return
-        }
-        for username in MessengerModel.shared.metadata.peerMap[SettingsModel.username!]! {
-            for i in 0..<100 {
-                MessengerModel.shared.sendMessage(message: "test", recipient: username)
-            }
-
-        }
-    }
-    
     // TODO(test indirect peers)
 
     // MARK: MessengerModelDelegate methods
@@ -165,8 +153,7 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
         
         // TODO(quacht): define a new entry that replaces the old one based on this message
         logs[(msg?.recipient)!]?.pingsSent = (oldEntry?.pingsSent)! + 1
-
-        self.logLineToDataFile("recipient,hops,pingsSent,acks,avgLatency,batteryLevel\n")
+        tableView.reloadData()
     }
     
     func didReceiveMessage(msg: UserMessage?) {
@@ -187,17 +174,28 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
     func didReceiveAck(for msg: UserMessage, latency: TimeInterval) {
         print("[TestingViewController] didReceiveAck(for: \(msg)")
         let oldEntry = logs[msg.recipient]
-        // average latency is
+        
         if oldEntry == nil {
             // TODO: create a new entry if need be.
             print("UH OH! Missing entry for \(msg.recipient)...could not update entry.")
         }
-        logs[msg.recipient]?.avgLatency = (oldEntry?.avgLatency*oldEntry?.acks + latency)/(oldEntry?.acks + 1)
+        
+        // Calculate average latency
+        let oldAckCount : Double = Double((oldEntry?.acks)!)
+        if oldEntry?.avgLatency == nil {
+            logs[msg.recipient]?.avgLatency = latency
+        } else {
+            var oldTotalLatency : Double = (oldEntry?.avgLatency!)!*oldAckCount
+            logs[msg.recipient]?.avgLatency = (oldTotalLatency + latency)/(oldAckCount + 1.0)
+        }
         logs[msg.recipient]?.acks += 1
+        tableView.reloadData()
         
         // write data to csv file
         //  battery level is a float that ranges from 0 to 1.0, or is -1.0 if info not available.)
-        self.logLineToDataFile("\(msg.recipient),\(logs[msg.recipient]?.hops),\(logs[msg.recipient]?.pingsSent),\(logs[msg.recipient]?.acks),\(logs[msg.recipient]?.avgLatency),\(UIDevice.current.batteryLevel)\n")
+        let dataToLog = "\(msg.recipient),\(logs[msg.recipient]?.hops),\(logs[msg.recipient]?.pingsSent),\(logs[msg.recipient]?.acks),\(logs[msg.recipient]!.avgLatency!),\(UIDevice.current.batteryLevel)\n"
+        self.logLineToDataFile(dataToLog)
+        print("logged data: \(dataToLog)")
 
     }
 }
