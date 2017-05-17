@@ -19,12 +19,24 @@ struct LogEntry {
 
 class TestingViewController: UIViewController, UITableViewDataSource, MessengerModelDelegate, UITableViewDelegate {
     @IBOutlet weak var tableView: UITableView!
+    
     @IBAction func testDirectPeers() {
+        print("[Testing] testDirectPeers")
         if MessengerModel.shared.metadata.peerMap[SettingsModel.username!] == nil {
             print("testDirectPeers cannot run without direct peers...")
             return
         }
         for username in MessengerModel.shared.metadata.peerMap[SettingsModel.username!]! {
+            for i in 0..<100 {
+                MessengerModel.shared.sendMessage(message: "test\(i)", recipient: username)
+            }
+        }
+    }
+    
+    @IBAction func pingAllUsers() {
+        print("[Testing] pingAllUsers")
+        for (username, _) in MessengerModel.shared.users {
+            if username == SettingsModel.username! { continue }
             for i in 0..<100 {
                 MessengerModel.shared.sendMessage(message: "test\(i)", recipient: username)
             }
@@ -54,9 +66,6 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
         // Set this view controller to be the delegate of MessengerModel that keeps track of the messages being sent between you and others on the network.
         MessengerModel.shared.delegates.append(self)
         tableView.reloadData()
-        //testDirectPeers()
-        tableView.reloadData()
-
     }
     
     deinit {

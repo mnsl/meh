@@ -288,6 +288,9 @@ class MessengerModel : BLEDelegate {
         // if recipientUUID in connectedPeripherals, send directly to that peripheral's inbox.
         
         // else stick the message in this node's peripheral's outbox.
+        if recipient == SettingsModel.username! {
+            return // don't need to send messages to ourselves
+        }
         
         let message = UserMessage(content: message, origin: SettingsModel.username!, date: Date(), recipient: recipient)
         messagesAwaitingACK.update(with: message)
@@ -310,12 +313,7 @@ class MessengerModel : BLEDelegate {
                 // do not reforward this message
                 self.doNotForward.update(with: message)
                 
-                // tell ChatViewController to update view of messages.
-                for delegate in self.delegates {
-                    delegate.didSendMessage(msg: message)
-                }
                 // add this message to the chat history
-                
                 let recipientUser = self.users[message.recipient]
                 if recipientUser == nil {
                     print("that's weird, recipientUser shouldn't be nil :(")
@@ -325,6 +323,11 @@ class MessengerModel : BLEDelegate {
                    self.chats[recipientUser!]!.append(message)
                 } else {
                    self.chats[recipientUser!] = [message]
+                }
+                
+                // tell ChatViewController to update view of messages.
+                for delegate in self.delegates {
+                    delegate.didSendMessage(msg: message)
                 }
                 
             } else {
@@ -526,10 +529,7 @@ class MessengerModel : BLEDelegate {
             let userMessage = message as! UserMessage
             if userMessage.recipient == self.metadata.username {
                 print("message received was intended for this user")
-                for delegate in delegates {
-                    delegate.didReceiveMessage(msg: userMessage)
-                }
-                
+
                 let ack = ACK(originalMessageOrigin: userMessage.origin, originalMessageRecipient: userMessage.recipient, originalMessageHash: userMessage.hashValue)
                 sendACK(ack: ack, exclude: nil)
                 
@@ -543,6 +543,11 @@ class MessengerModel : BLEDelegate {
                 } else {
                     self.chats[origin!] = [userMessage]
                 }
+                
+                for delegate in delegates {
+                    delegate.didReceiveMessage(msg: userMessage)
+                }
+                
             } else {
                 if self.doNotForward.contains(userMessage) {
                     print("message \(userMessage) has already been forwarded / sent from this node")

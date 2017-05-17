@@ -98,27 +98,54 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     func didSendMessage(msg: UserMessage?) {
         print("[ChatViewController] didSendMessage(msg: \(msg)")
         // Once we receive confirmation from the Messenger model that a message has been sent, we display the message we sent.
-        if msg != nil {
-            self.displayMessages.append(msg!)
-            loadMessages(messages: self.displayMessages)
+        
+        let user = MessengerModel.shared.users[msg!.recipient]
+        if user == nil { return }
+        if MessengerModel.shared.chats[user!] == nil { return }
+        loadMessages(messages: MessengerModel.shared.chats[user!]!)
+
+        
+        /*
+        if MessengerModel.shared.chats[user!] != nil {
+            if MessengerModel.shared.chats[user!]?.last == msg {
+                // already loaded message
+                return
+            }
+            MessengerModel.shared.chats[user!]!.append(msg!)
         } else {
-            print("Sent message is nil! --> not going to display in chat.")
+            MessengerModel.shared.chats[user!] = [msg!]
         }
+         */
+        loadMessages(messages: MessengerModel.shared.chats[user!]!)
     }
     
     func didReceiveMessage(msg: UserMessage?) {
         print("[ChatViewController] didReceiveMessage(msg: \(msg)")
-        if msg != nil {
-            if MessengerModel.shared.chats[UserListViewController.selectedUser!] != nil {
-                MessengerModel.shared.chats[UserListViewController.selectedUser!]!.append(msg!)
-            } else {
-                MessengerModel.shared.chats[UserListViewController.selectedUser!] = [msg!]
-            }
-            // addMessageToDisplay(message: msg!)
-            loadMessages(messages: MessengerModel.shared.chats[UserListViewController.selectedUser!]!)
-        } else {
-            print("Sent message is nil! --> not going to display in chat.")
+        if msg == nil {
+            print("Received message is nil! --> not going to display in chat.")
+            return
         }
+        
+        let user = MessengerModel.shared.users[msg!.origin]
+        if user == nil { return }
+        if MessengerModel.shared.chats[user!] == nil { return }
+        loadMessages(messages: MessengerModel.shared.chats[user!]!)
+        
+        /*
+        let user = MessengerModel.shared.users[msg!.origin]
+        if user == nil { return }
+        
+        if MessengerModel.shared.chats[user!] != nil {
+            if MessengerModel.shared.chats[user!]?.last == msg {
+                // already loaded message
+                return
+            }
+            MessengerModel.shared.chats[user!]!.append(msg!)
+        } else {
+            MessengerModel.shared.chats[user!] = [msg!]
+        }
+        loadMessages(messages: MessengerModel.shared.chats[user!]!)
+        */
     }
     
     func didUpdateUsers() {
@@ -153,27 +180,35 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
 
     func didReceiveAck(for msg: UserMessage, latency: TimeInterval) {
         print("[ChatViewController] didReceiveAck(for: \(msg)")
-        if let index = self.displayMessages.index(of: msg) {
             let acknowledgedMessage = UserMessage(content: msg.content + " [received ACK \(latency) sec later]", origin: msg.origin, date: msg.date, recipient: msg.recipient)
             //self.displayMessages[index] = acknowledgedMessage
             //print("self.displayMessages = \(self.displayMessages)")
             
-            if MessengerModel.shared.chats[UserListViewController.selectedUser!] != nil {
-                if let index = MessengerModel.shared.chats[UserListViewController.selectedUser!]!.index(of: msg) {
-                    let acknowledgedMessage = UserMessage(content: msg.content + " [received ACK \(latency) sec later]", origin: msg.origin, date: msg.date, recipient: msg.recipient)
-                    //self.displayMessages[index] = acknowledgedMessage
-                    //print("self.displayMessages = \(self.displayMessages)")
-                    
-                    print("MessengerModel.shared.chats[UserListViewController.selectedUser!]! was:\n\t \(MessengerModel.shared.chats[UserListViewController.selectedUser!]!)")
-                    
-                    MessengerModel.shared.chats[UserListViewController.selectedUser!]![index] = acknowledgedMessage
-                        
-                    print("MessengerModel.shared.chats[UserListViewController.selectedUser!]! is now:\n\t \(MessengerModel.shared.chats[UserListViewController.selectedUser!]!)")
-                }
-                loadMessages(messages: MessengerModel.shared.chats[UserListViewController.selectedUser!]!)
+            let user = MessengerModel.shared.users[msg.recipient]
+            if user == nil {
+                print("received ACK for unknown user...")
+                return
             }
-        } else {
-            print("received ACK for a message not in the chat field...")
-        }
+            if MessengerModel.shared.chats[user!] == nil {
+                print("received ACK for a message not in the chat field...")
+                return
+            }
+        
+            if let index = MessengerModel.shared.chats[user!]!.index(of: msg) {
+                let acknowledgedMessage = UserMessage(content: msg.content + " [received ACK \(latency) sec later]", origin: msg.origin, date: msg.date, recipient: msg.recipient)
+                //self.displayMessages[index] = acknowledgedMessage
+                //print("self.displayMessages = \(self.displayMessages)")
+                
+                print("MessengerModel.shared.chats[UserListViewController.selectedUser!]! was:\n\t \(MessengerModel.shared.chats[user!]!)")
+                
+                MessengerModel.shared.chats[user!]![index] = acknowledgedMessage
+                    
+                print("MessengerModel.shared.chats[UserListViewController.selectedUser!]! is now:\n\t \(MessengerModel.shared.chats[user!]!)")
+                
+                loadMessages(messages: MessengerModel.shared.chats[user!]!)
+            } else {
+                print("received ACK for a message not in the chat field...")
+            }
+        
     }
 }
