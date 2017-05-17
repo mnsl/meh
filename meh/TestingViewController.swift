@@ -19,8 +19,21 @@ struct LogEntry {
 
 class TestingViewController: UIViewController, UITableViewDataSource, MessengerModelDelegate, UITableViewDelegate {
     @IBOutlet weak var tableView: UITableView!
+
     let DATA_FILE_NAME = "log.csv"
     var logFile:FileHandle? = nil
+
+    @IBAction func testDirectPeers() {
+        if MessengerModel.shared.metadata.peerMap[SettingsModel.username!] == nil {
+            print("testDirectPeers cannot run without direct peers...")
+            return
+        }
+        for username in MessengerModel.shared.metadata.peerMap[SettingsModel.username!]! {
+            for i in 0..<100 {
+                MessengerModel.shared.sendMessage(message: "test\(i)", recipient: username)
+            }
+        }
+    }
     
     var logs = [String: LogEntry]() // username: log entry
     let hopCounts = MessengerModel.getHopCounts(metadata: MessengerModel.shared.metadata)
@@ -30,6 +43,8 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
         
         tableView.delegate = self
         tableView.dataSource = self
+        tableView.register(LogViewCell.self, forCellReuseIdentifier: "LogViewCell")
+        
         
         let hopCounts = MessengerModel.getHopCounts(metadata: MessengerModel.shared.metadata)
         
@@ -50,8 +65,7 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
         
         // Set this view controller to be the delegate of MessengerModel that keeps track of the messages being sent between you and others on the network.
         MessengerModel.shared.delegates.append(self)
-        testDirectPeers()
-
+        tableView.reloadData()
     }
     
     
@@ -87,6 +101,8 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
         NotificationCenter.default.removeObserver(self)
     }
     
+    
+    
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
@@ -94,11 +110,13 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
     
     // MARK: UITableViewDataSource methods
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "UITableViewCell", for: indexPath)
+        let cell = tableView.dequeueReusableCell(withIdentifier: "LogViewCell", for: indexPath)
         cell.selectionStyle = .none // to prevent cells from being "highlighted"
         let sortedUsernames = Array(self.logs.keys).sorted()
         let username = sortedUsernames[indexPath.row]
+        print("username: \(username)")
         let logEntry = self.logs[username]!
+        print("log entry: \(logEntry)")
         
         cell.textLabel?.text = logEntryToString(logEntry: logEntry)
         
@@ -132,8 +150,8 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
         }
     }
     
-    // TODO(test inDirect peers)
-    
+    // TODO(test indirect peers)
+
     // MARK: MessengerModelDelegate methods
     func didSendMessage(msg: UserMessage?) {
         print("[TestingViewController] didSendMessage(msg: \(msg)")
