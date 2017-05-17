@@ -193,19 +193,13 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         }
         
         
-        if self.connectedPeripherals.count < 2 {
-            print("[DEBUG] Connecting to peripheral: \(peripheral)")
-            bleCentralManager.connect(peripheral, options: [CBConnectPeripheralOptionNotifyOnDisconnectionKey : NSNumber(value: true)])
-            
-            // TODO: add peripheral to map connectedPeripherals
-            self.connectedPeripherals[peripheral.identifier] = peripheral
-            
-            return true
-        } else {
-            // Only allowed to connect to 2 peripherals at once
-            print("[BLE] Can't connect to peripheral because we are already connected to the max # of peripherals")
-            return false
-        }
+        print("[DEBUG] Connecting to peripheral: \(peripheral)")
+        bleCentralManager.connect(peripheral, options: [CBConnectPeripheralOptionNotifyOnDisconnectionKey : NSNumber(value: true)])
+        
+        // TODO: add peripheral to map connectedPeripherals
+        self.connectedPeripherals[peripheral.identifier] = peripheral
+        
+        return true
     }
     
     // TODO: announce to peers that connection is lost
@@ -274,25 +268,32 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     }
     
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
-        print("[ERROR] Could not connect to peripheral \(peripheral) error: \(error!.localizedDescription)")
+        print("[BLE] Could not connect to peripheral \(peripheral) error: \(error!.localizedDescription)")
     }
     
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         
-        print("[DEBUG] Connected to peripheral \(peripheral)")
+        print("[BLE] Connected to peripheral \(peripheral)")
+        
+        print("current connectedPeripherals count: \(self.connectedPeripherals.count)")
+        print("current connectedPeripherals: \(self.connectedPeripherals)")
+        
+        if self.connectedPeripherals.count > 2 {
+            // Only allowed to connect to 2 peripherals at once
+            print("[BLE] Disconnected from newly connected peripheral because we were already connected to the max # of peripherals")
+            disconnectFromPeripheral(peripheral)
+        }
         
         peripheral.delegate = self
         peripheral.discoverServices([CBUUID(string: SERVICE_UUID)])
         
         delegate?.didConnectToPeripheral(peripheral: peripheral)
         
-        print("current connectedPeripherals count: \(self.connectedPeripherals.count)")
-        print("current connectedPeripherals: \(self.connectedPeripherals)")
     }
     
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         
-        var text = "[DEBUG] Disconnected from peripheral: \(peripheral)"
+        var text = "[BLE] Disconnected from peripheral: \(peripheral)"
         
         self.connectedPeripherals[peripheral.identifier] = nil
         
@@ -313,11 +314,11 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         
         if error != nil {
-            print("[ERROR] Error discovering services. \(error!.localizedDescription)")
+            print("[BLE] Error discovering services. \(error!.localizedDescription)")
             return
         }
         
-        print("[DEBUG] Found services \(peripheral.services!) for peripheral: \(peripheral)")
+        print("[BLE] Found services \(peripheral.services!) for peripheral: \(peripheral)")
         
         // Check to see if services are what we want.
         var found_service = false
@@ -353,11 +354,11 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         
         if error != nil {
-            print("[ERROR] Error discovering characteristics. \(error!.localizedDescription)")
+            print("[BLE] Error discovering characteristics. \(error!.localizedDescription)")
             return
         }
 
-        print("[DEBUG] Found characteristics for peripheral: \(peripheral)")
+        print("[BLE] Found characteristics for peripheral: \(peripheral)")
         
         var peerInbox: CBCharacteristic?
         var peerOutbox: CBCharacteristic?
@@ -414,7 +415,7 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         print("[BLE] peripheral \(peripheral) didUpdateValueFor \(characteristic)")
         if error != nil {
             
-            print("[ERROR] Error updating value. \(error!.localizedDescription)")
+            print("[BLE] Error updating value. \(error!.localizedDescription)")
             return
         }
         
