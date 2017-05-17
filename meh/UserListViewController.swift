@@ -9,6 +9,21 @@
 import Foundation
 import UIKit
 
+struct UserEntry : Hashable {
+    let user : User
+    var unreadMessages : Bool
+    var hopCount : Int
+    
+    // conform to Hashable protocol
+    var hashValue: Int {
+        return "\(user),\(unreadMessages),\(hopCount)".hashValue
+    }
+    
+    static func == (lhs: UserEntry, rhs: UserEntry) -> Bool {
+        return lhs.hashValue == rhs.hashValue
+    }
+}
+
 class UserListViewController: UIViewController, UITableViewDataSource, MessengerModelDelegate, UITableViewDelegate {
     @IBOutlet weak var tableView: UITableView!
     @IBOutlet weak var startchat: UIButton!
@@ -19,6 +34,8 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     public static var onlineUsersArray: Array<User> = []
     public static var selectedUser: User? = nil
     var selectedIndex : IndexPath? = nil
+    
+    public static var userEntries = [UserEntry]()
     
     // MARK: - UITableViewDataSource
     
@@ -31,8 +48,6 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
             print("[UserListViewController] has no user selected!")
         }
     }
-    
-    
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -112,12 +127,14 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     func didReceiveMessage(msg: UserMessage?) {
         // TODO: bold the text of the user in the userlist
         // Maintain state of what messages have been unread?
-        return
+        if msg == nil { return }
+        
     }
 
     func didUpdateUsers() {
         print("[UserListViewController] updated users")
         UserListViewController.onlineUsersArray = Array(MessengerModel.shared.users.values)
+        
         tableView.reloadData()
     }
     
