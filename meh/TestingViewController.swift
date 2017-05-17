@@ -27,6 +27,35 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
     let hopCounts = MessengerModel.getHopCounts(metadata: MessengerModel.shared.metadata)
     var alert:UIAlertController? = nil
 
+    @IBAction func resetLog(_ sender: Any) {
+        self.resetLogFile()
+    }
+    
+    @IBAction func emailLogFile(_ sender: UIButton) {
+        if !MFMailComposeViewController.canSendMail() {
+            self.alert = UIAlertController(title: "Can't send mail", message: "Please set up an email account on this phone to send mail", preferredStyle: UIAlertControllerStyle.alert)
+            let ok = UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: {(action:UIAlertAction) in
+                self.dismiss(animated: true, completion: nil)
+            })
+            self.alert?.addAction(ok)
+            self.present(self.alert!, animated: true, completion: nil)
+            return
+        }
+        
+        let fileData = NSData(contentsOfFile: self.getPathToLogFile())
+        if fileData == nil || fileData?.length == 0 {
+            return
+        }
+        let emailTitle = "Position File"
+        let messageBody = "Data from PositionLogger"
+        let mc = MFMailComposeViewController()
+        mc.mailComposeDelegate = self
+        mc.setSubject(emailTitle)
+        mc.setMessageBody(messageBody, isHTML: false)
+        mc.addAttachmentData(fileData as! Data, mimeType: "text/plain", fileName: DATA_FILE_NAME)
+        self.present(mc, animated: true, completion: nil)
+    }
+    
     @IBAction func testDirectPeers() {
         print("[Testing] testDirectPeers")
         if MessengerModel.shared.metadata.peerMap[SettingsModel.username!] == nil {
@@ -81,7 +110,21 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
         tableView.reloadData()
     }
     
-    
+    func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
+        switch result {
+        case MFMailComposeResult.cancelled:
+            NSLog("Mail cancelled")
+        case MFMailComposeResult.saved:
+            NSLog("Mail saved")
+        case MFMailComposeResult.sent:
+            NSLog("Mail sent")
+        case MFMailComposeResult.failed:
+            NSLog("Mail sent failure: " + (error?.localizedDescription)!)
+        }
+        
+        self.dismiss(animated: true, completion: nil)
+    }
+
     func getPathToLogFile() -> String {
         let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
         let filePath = documentsPath + "/" + DATA_FILE_NAME
