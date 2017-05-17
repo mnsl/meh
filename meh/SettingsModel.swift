@@ -16,7 +16,7 @@ class SettingsModel {
     
     static var username: String? { // name to post new readings under
         get {
-            print("User selected username \(String(describing: UserDefaults.standard.string(forKey: DefaultsKey.Username.rawValue)))")
+            //print("User selected username \(String(describing: UserDefaults.standard.string(forKey: DefaultsKey.Username.rawValue)))")
             return UserDefaults.standard.string(forKey: DefaultsKey.Username.rawValue)
         }
         set(newUsername) {

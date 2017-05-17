@@ -192,14 +192,20 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
             return false
         }
         
-        print("[DEBUG] Connecting to peripheral: \(peripheral)")
         
-        bleCentralManager.connect(peripheral, options: [CBConnectPeripheralOptionNotifyOnDisconnectionKey : NSNumber(value: true)])
-        
-        // TODO: add peripheral to map connectedPeripherals
-        self.connectedPeripherals[peripheral.identifier] = peripheral
-
-        return true
+        if self.connectedPeripherals.count < 2 {
+            print("[DEBUG] Connecting to peripheral: \(peripheral)")
+            bleCentralManager.connect(peripheral, options: [CBConnectPeripheralOptionNotifyOnDisconnectionKey : NSNumber(value: true)])
+            
+            // TODO: add peripheral to map connectedPeripherals
+            self.connectedPeripherals[peripheral.identifier] = peripheral
+            
+            return true
+        } else {
+            // Only allowed to connect to 2 peripherals at once
+            print("[BLE] Can't connect to peripheral because we are already connected to the max # of peripherals")
+            return false
+        }
     }
     
     // TODO: announce to peers that connection is lost

@@ -14,7 +14,7 @@ protocol MessengerModelDelegate {
     func didSendMessage(msg: UserMessage?)
     func didReceiveMessage(msg: UserMessage?)
     func didUpdateUsers()
-    func didReceiveAck(for: UserMessage)
+    func didReceiveAck(for: UserMessage, latency: TimeInterval)
 }
 
 extension Notification.Name {
@@ -115,7 +115,7 @@ class MessengerModel : BLEDelegate {
      * @return  dictionary mapping each of the other users in the network to the hopCount
      *
      */
-    func getHopCounts(metadata : Metadata) -> Dictionary<String, Int> {
+    public static func getHopCounts(metadata : Metadata) -> Dictionary<String, Int> {
         let peerMap = metadata.peerMap
         var queue = [[metadata.username]]
         var visited = Set<String>()
@@ -133,7 +133,7 @@ class MessengerModel : BLEDelegate {
             visited.insert(currentNode!)
             
             for neighbor in neighbors! {
-                if visited.contains(neighbor) {
+                if !visited.contains(neighbor) {
                     var newPath = Array(currentPath!)
                     newPath.append(neighbor)
                     queue.append(newPath)
@@ -156,8 +156,8 @@ class MessengerModel : BLEDelegate {
      *
      */
     func introduceSelf(recipient: String) {
-        print("[MessengerModel] introduceSelf")
-        print("metadata username is \(String(describing: self.metadata.username))")
+        print("[MessengerModel] introduceSelf to \(recipient)")
+        //print("metadata username is \(String(describing: self.metadata.username))")
         let metadata = metadataToJSONData()
         if metadata == nil {
             print("METADATA IS NIL-- could not introduce self with nil metadata")
@@ -411,7 +411,10 @@ class MessengerModel : BLEDelegate {
         if self.metadata.peerMap[SettingsModel.username!] == nil {
            self.metadata.peerMap[SettingsModel.username!] = [metadata.username]
         } else {
-            self.metadata.peerMap[SettingsModel.username!]!.append(metadata.username)
+            // Add peer to this node's peermap if it's not in there already
+            if !self.metadata.peerMap[SettingsModel.username!]!.contains(metadata.username) {
+                self.metadata.peerMap[SettingsModel.username!]!.append(metadata.username)
+            }
         }
         
         // If this is the first peer we're connecting to, 
@@ -457,6 +460,9 @@ class MessengerModel : BLEDelegate {
                     if selfIndex != nil {
                         self.metadata.peerMap[peer.name]!.remove(at: selfIndex!)
                         print("removed self from the list of the disconnected peripheral's direct peers in this node's peerMap")
+                        print("disconnected peripheral's direct peers are now \(self.metadata.peerMap[peer.name]!)")
+                        print("disconnected peripheral's direct peers were \(peers)")
+
                     } else {
                         print("peer \(peer.name) just disconnected but this node was not listed as its direct peer in this node's peerMap??")
                     }
@@ -474,6 +480,7 @@ class MessengerModel : BLEDelegate {
                     if peerIndex != nil {
                         self.metadata.peerMap[self.metadata.username]!.remove(at: peerIndex!)
                         print("removed \(peer.name) from the list of direct peers in this node's peerMap")
+                        print("this node's direct peers are now \(self.metadata.peerMap[self.metadata.username]!)")
                     } else {
                         print("peer \(peer.name) just disconnected but was not listed as a direct peer in this node's peerMap??")
                     }
@@ -556,10 +563,11 @@ class MessengerModel : BLEDelegate {
                     }
                 }
                 if acknowledgedMessage != nil {
-                    print("received ACK for message \(acknowledgedMessage)")
+                    let latency = Date().timeIntervalSince(acknowledgedMessage!.date)
+                    print("received ACK for message \(acknowledgedMessage) with latency \(latency)")
                     self.messagesAwaitingACK.remove(acknowledgedMessage!)
                     for delegate in self.delegates {
-                        delegate.didReceiveAck(for: acknowledgedMessage!)
+                        delegate.didReceiveAck(for: acknowledgedMessage!, latency: latency)
                     }
                 } else {
                     print("received ACK for a message this node sent, but ACK hash didn't match any message awaiting ACK")
@@ -588,8 +596,8 @@ class MessengerModel : BLEDelegate {
             // update our peerMap entry for that user with the corresponding
             // entry in this peer's metadata
             
-            let selfHopCounts = getHopCounts(metadata: self.metadata)
-            let peerHopCounts = getHopCounts(metadata: metadata)
+            let selfHopCounts = MessengerModel.getHopCounts(metadata: self.metadata)
+            let peerHopCounts = MessengerModel.getHopCounts(metadata: metadata)
             
             print("selfHopCounts: \(selfHopCounts)")
             print("peerHopCounts: \(peerHopCounts)")
@@ -598,6 +606,12 @@ class MessengerModel : BLEDelegate {
                 if selfHopCounts[username] == nil || selfHopCounts[username]! > hopCount {
                     print("updating peerMap entry for \(username) from \(self.metadata.peerMap[username]) to \(metadata.peerMap[username]), the value in the peerMap for user \(metadata.username)")
                     self.metadata.peerMap[username] = metadata.peerMap[username]
+                }
+            }
+            
+            for (username, peers) in metadata.peerMap {
+                if peers.count == 0 {
+                    self.metadata.peerMap[username] = [String]()
                 }
             }
         }
@@ -707,12 +721,11 @@ class MessengerModel : BLEDelegate {
     }
 
     func jsonDataToOutbox(data: Data?) -> [UserMessage]? {
-        print("data: \( String(data: data!, encoding: .utf8) ?? "[couldn't convert to string]") ")
+        //print("data: \( String(data: data!, encoding: .utf8) ?? "[couldn't convert to string]") ")
         
         if let outboxData = data {
             var messages = [UserMessage]()
             let json = try? JSONSerialization.jsonObject(with: outboxData, options: [])
-            print("json: \(json)")
             if let outboxJSON = json as? [ [String: String] ] {
                 for messageDict in outboxJSON {
                     let content = messageDict["content"]
@@ -734,7 +747,7 @@ class MessengerModel : BLEDelegate {
     func metadataToJSONData() -> Data? {
         print("[MessengerModel] metadataToJSONData()")
         if let json = self.metadata.toJSON() {
-            print("metadata \(self.metadata) -> JSON \(json)")
+            //print("metadata \(self.metadata) -> JSON \(json)")
             return json.data(using: .utf8)
         }
         print("could not convert metadata '\(self.metadata)' to JSON")
