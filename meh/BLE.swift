@@ -278,10 +278,13 @@ class BLE: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate , CBPeripher
         print("current connectedPeripherals count: \(self.connectedPeripherals.count)")
         print("current connectedPeripherals: \(self.connectedPeripherals)")
         
-        if self.connectedPeripherals.count > 2 {
-            // Only allowed to connect to 2 peripherals at once
-            print("[BLE] Disconnected from newly connected peripheral because we were already connected to the max # of peripherals")
-            disconnectFromPeripheral(peripheral)
+        if self.connectedPeripherals.count > 3 {
+            // Only allowed to connect to 3 peripherals at once
+            for (_, peripheral) in self.connectedPeripherals {
+                print("[BLE] Too many peripherals, booting off \(peripheral.name)")
+                disconnectFromPeripheral(peripheral)
+                break
+            }
         }
         
         peripheral.delegate = self

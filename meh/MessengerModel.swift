@@ -526,6 +526,16 @@ class MessengerModel : BLEDelegate {
 
         if message?.type == "UserMessage" {
             let userMessage = message as! UserMessage
+            
+            if self.users[userMessage.origin] == nil {
+                self.users[userMessage.origin] = User(uuid: nil, name: userMessage.origin)
+            }
+            
+            if self.users[userMessage.recipient] == nil {
+                self.users[userMessage.recipient] = User(uuid: nil, name: userMessage.recipient)
+            }
+            
+            
             if userMessage.recipient == self.metadata.username {
                 print("message received was intended for this user")
 
@@ -561,7 +571,18 @@ class MessengerModel : BLEDelegate {
                 }
             }
         } else if message?.type == "ACK" {
+            
             let ack = message as! ACK
+            
+            
+            if self.users[ack.originalMessageOrigin] == nil {
+                self.users[ack.originalMessageOrigin] = User(uuid: nil, name: ack.originalMessageOrigin)
+            }
+            
+            if self.users[ack.originalMessageRecipient] == nil {
+                self.users[ack.originalMessageRecipient] = User(uuid: nil, name: ack.originalMessageRecipient )
+            }
+            
             if ack.originalMessageOrigin == self.metadata.username {
                 var acknowledgedMessage : UserMessage? = nil
                 for msg in self.messagesAwaitingACK {

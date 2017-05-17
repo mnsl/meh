@@ -43,12 +43,13 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
     
     @IBAction func pingAllUsers() {
         print("[Testing] pingAllUsers")
-        for (username, _) in MessengerModel.shared.users {
-            if username == SettingsModel.username! { continue }
-            for i in 0..<100 {
+        for i in 0..<100 {
+            for (username, _) in MessengerModel.shared.users {
+                if username == SettingsModel.username! { continue }
                 MessengerModel.shared.sendMessage(message: "test\(i)", recipient: username)
             }
         }
+        print("all messages sent")
     }
     
     override func viewDidLoad() {
