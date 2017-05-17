@@ -8,6 +8,7 @@
 
 import Foundation
 import UIKit
+import MessageUI
 
 struct LogEntry {
     let recipient : String
@@ -17,11 +18,14 @@ struct LogEntry {
     var avgLatency : Double?
 }
 
-class TestingViewController: UIViewController, UITableViewDataSource, MessengerModelDelegate, UITableViewDelegate {
+class TestingViewController: UIViewController, UITableViewDataSource, MessengerModelDelegate, UITableViewDelegate, MFMailComposeViewControllerDelegate {
     @IBOutlet weak var tableView: UITableView!
 
     let DATA_FILE_NAME = "log.csv"
     var logFile:FileHandle? = nil
+    var logs = [String: LogEntry]() // username: log entry
+    let hopCounts = MessengerModel.getHopCounts(metadata: MessengerModel.shared.metadata)
+    var alert:UIAlertController? = nil
 
     @IBAction func testDirectPeers() {
         if MessengerModel.shared.metadata.peerMap[SettingsModel.username!] == nil {
@@ -32,11 +36,50 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
             for i in 0..<100 {
                 MessengerModel.shared.sendMessage(message: "test\(i)", recipient: username)
             }
+
         }
     }
-    
-    var logs = [String: LogEntry]() // username: log entry
-    let hopCounts = MessengerModel.getHopCounts(metadata: MessengerModel.shared.metadata)
+
+    @IBAction func emailLogFile(_ sender: UIButton) {
+        if !MFMailComposeViewController.canSendMail() {
+            self.alert = UIAlertController(title: "Can't send mail", message: "Please set up an email account on this phone to send mail", preferredStyle: UIAlertControllerStyle.alert)
+            let ok = UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: {(action:UIAlertAction) in
+                self.dismiss(animated: true, completion: nil)
+            })
+            self.alert?.addAction(ok)
+            self.present(self.alert!, animated: true, completion: nil)
+            return
+        }
+        
+        let fileData = NSData(contentsOfFile: self.getPathToLogFile())
+        if fileData == nil || fileData?.length == 0 {
+            return
+        }
+        let emailTitle = "Position File"
+        let messageBody = "Data from PositionLogger"
+        let mc = MFMailComposeViewController()
+        mc.mailComposeDelegate = self
+        mc.setSubject(emailTitle)
+        mc.setMessageBody(messageBody, isHTML: false)
+        mc.addAttachmentData(fileData as! Data, mimeType: "text/plain", fileName: DATA_FILE_NAME)
+        self.present(mc, animated: true, completion: nil)
+
+    }
+
+    func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
+        switch result {
+        case MFMailComposeResult.cancelled:
+            NSLog("Mail cancelled")
+        case MFMailComposeResult.saved:
+            NSLog("Mail saved")
+        case MFMailComposeResult.sent:
+            NSLog("Mail sent")
+        case MFMailComposeResult.failed:
+            NSLog("Mail sent failure: " + (error?.localizedDescription)!)
+        }
+        
+        self.dismiss(animated: true, completion: nil)
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -178,7 +221,7 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
         if oldEntry == nil {
             // TODO: create a new entry if need be.
             print("UH OH! Missing entry for \(msg.recipient)...could not update entry.")
-        }
+        } else {
         
         // Calculate average latency
         let oldAckCount : Double = Double((oldEntry?.acks)!)
@@ -193,9 +236,10 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
         
         // write data to csv file
         //  battery level is a float that ranges from 0 to 1.0, or is -1.0 if info not available.)
-        let dataToLog = "\(msg.recipient),\(logs[msg.recipient]?.hops),\(logs[msg.recipient]?.pingsSent),\(logs[msg.recipient]?.acks),\(logs[msg.recipient]!.avgLatency!),\(UIDevice.current.batteryLevel)\n"
+        let dataToLog = "\(msg.recipient),\(logs[msg.recipient]!.hops),\(logs[msg.recipient]!.pingsSent),\(logs[msg.recipient]!.acks),\(logs[msg.recipient]!.avgLatency!),\(UIDevice.current.batteryLevel)\n"
         self.logLineToDataFile(dataToLog)
         print("logged data: \(dataToLog)")
+        }
 
     }
 }
