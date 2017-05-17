@@ -150,8 +150,6 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
     }
     
     // MARK: Test methods
-    
-    // TODO(test indirect peers)
 
     // MARK: MessengerModelDelegate methods
     func didSendMessage(msg: UserMessage?) {
