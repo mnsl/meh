@@ -440,12 +440,26 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "meh/TestingViewController.swift"
-            timestampString = "516694618.296978"
+            timestampString = "516698320.707986"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "225"
-            endingLineNumber = "225"
-            landmarkName = "didReceiveAck(for:latency:)"
+            startingLineNumber = "227"
+            endingLineNumber = "227">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "meh/TestingViewController.swift"
+            timestampString = "516698157.1322"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "44"
+            endingLineNumber = "44"
+            landmarkName = "pingAllUsers()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
