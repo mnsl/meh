@@ -28,6 +28,7 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
     var alert:UIAlertController? = nil
 
     @IBAction func testDirectPeers() {
+        print("[Testing] testDirectPeers")
         if MessengerModel.shared.metadata.peerMap[SettingsModel.username!] == nil {
             print("testDirectPeers cannot run without direct peers...")
             return
@@ -39,46 +40,15 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
 
         }
     }
-
-    @IBAction func emailLogFile(_ sender: UIButton) {
-        if !MFMailComposeViewController.canSendMail() {
-            self.alert = UIAlertController(title: "Can't send mail", message: "Please set up an email account on this phone to send mail", preferredStyle: UIAlertControllerStyle.alert)
-            let ok = UIAlertAction(title: "OK", style: UIAlertActionStyle.default, handler: {(action:UIAlertAction) in
-                self.dismiss(animated: true, completion: nil)
-            })
-            self.alert?.addAction(ok)
-            self.present(self.alert!, animated: true, completion: nil)
-            return
+    
+    @IBAction func pingAllUsers() {
+        print("[Testing] pingAllUsers")
+        for (username, _) in MessengerModel.shared.users {
+            if username == SettingsModel.username! { continue }
+            for i in 0..<100 {
+                MessengerModel.shared.sendMessage(message: "test\(i)", recipient: username)
+            }
         }
-        
-        let fileData = NSData(contentsOfFile: self.getPathToLogFile())
-        if fileData == nil || fileData?.length == 0 {
-            return
-        }
-        let emailTitle = "Position File"
-        let messageBody = "Data from PositionLogger"
-        let mc = MFMailComposeViewController()
-        mc.mailComposeDelegate = self
-        mc.setSubject(emailTitle)
-        mc.setMessageBody(messageBody, isHTML: false)
-        mc.addAttachmentData(fileData as! Data, mimeType: "text/plain", fileName: DATA_FILE_NAME)
-        self.present(mc, animated: true, completion: nil)
-
-    }
-
-    func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
-        switch result {
-        case MFMailComposeResult.cancelled:
-            NSLog("Mail cancelled")
-        case MFMailComposeResult.saved:
-            NSLog("Mail saved")
-        case MFMailComposeResult.sent:
-            NSLog("Mail sent")
-        case MFMailComposeResult.failed:
-            NSLog("Mail sent failure: " + (error?.localizedDescription)!)
-        }
-        
-        self.dismiss(animated: true, completion: nil)
     }
     
     override func viewDidLoad() {
