@@ -567,19 +567,46 @@ class MessengerModel : BLEDelegate {
                         break
                     }
                 }
-                if acknowledgedMessage != nil {
-                    let latency = Date().timeIntervalSince(acknowledgedMessage!.date)
-                    print("received ACK for message \(acknowledgedMessage) with latency \(latency)")
-                    self.messagesAwaitingACK.remove(acknowledgedMessage!)
-                    for delegate in self.delegates {
-                        delegate.didReceiveAck(for: acknowledgedMessage!, latency: latency)
+                
+                if let msg : UserMessage = acknowledgedMessage {
+                    let latency = Date().timeIntervalSince(msg.date)
+                    print("received ACK for message \(msg) with latency \(latency)")
+                    self.messagesAwaitingACK.remove(msg)
+                    
+                    let user = self.users[msg.recipient]
+                    if user == nil {
+                        print("received ACK for message from unknown user...")
+                        return
+                    }
+                    if self.chats[user!] == nil {
+                        print("received ACK for an empty chat history...")
+                        return
+                    }
+                    
+                    if let index = MessengerModel.shared.chats[user!]!.index(of: msg) {
+                        self.chats[user!]![index] = UserMessage(content: msg.content + " ☑︎", origin: msg.origin, date: msg.date, recipient: msg.recipient)
+                        
+                        //print("chats[UserListViewController.selectedUser!]! was:\n\t \(self.chats[user!]!)")
+                        
+                        MessengerModel.shared.chats[user!]![index] = msg
+                        
+                        //print("chats[UserListViewController.selectedUser!]! is now:\n\t \(self.chats[user!]!)")
+                        
+                        for delegate in self.delegates {
+                            delegate.didReceiveAck(for: msg, latency: latency)
+                        }
+                        
+                    } else {
+                        print("received ACK for a message not in the chat history...")
                     }
                 } else {
                     print("received ACK for a message this node sent, but ACK hash didn't match any message awaiting ACK")
+                    return
                 }
+                
             } else {
                 if self.doNotForwardACK.contains(ack) {
-                    print("message \(ack) has already been forwarded / sent from this node")
+                    print("ACK \(ack) has already been forwarded / sent from this node")
                 } else {
                     print("forwarding message \(ack)")
                     self.doNotForwardACK.update(with: ack)
@@ -608,6 +635,10 @@ class MessengerModel : BLEDelegate {
             print("peerHopCounts: \(peerHopCounts)")
             
             for (username, hopCount) in peerHopCounts {
+                if self.users[username] == nil {
+                    let newUser = User(uuid: nil, name: username)
+                    self.users[username] = newUser
+                }
                 if selfHopCounts[username] == nil || selfHopCounts[username]! > hopCount {
                     print("updating peerMap entry for \(username) from \(self.metadata.peerMap[username]) to \(metadata.peerMap[username]), the value in the peerMap for user \(metadata.username)")
                     self.metadata.peerMap[username] = metadata.peerMap[username]
@@ -618,6 +649,11 @@ class MessengerModel : BLEDelegate {
                 if peers.count == 0 {
                     self.metadata.peerMap[username] = [String]()
                 }
+            }
+            
+            // Let the delegates know the list of users has probably been updated
+            for delegate in delegates {
+                delegate.didUpdateUsers()
             }
         }
     }

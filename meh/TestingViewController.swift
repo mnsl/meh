@@ -19,7 +19,10 @@ struct LogEntry {
 
 class TestingViewController: UIViewController, UITableViewDataSource, MessengerModelDelegate, UITableViewDelegate {
     @IBOutlet weak var tableView: UITableView!
-    
+
+    let DATA_FILE_NAME = "log.csv"
+    var logFile:FileHandle? = nil
+
     @IBAction func testDirectPeers() {
         print("[Testing] testDirectPeers")
         if MessengerModel.shared.metadata.peerMap[SettingsModel.username!] == nil {
@@ -74,6 +77,36 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
         // Set this view controller to be the delegate of MessengerModel that keeps track of the messages being sent between you and others on the network.
         MessengerModel.shared.delegates.append(self)
         tableView.reloadData()
+    }
+    
+    
+    func getPathToLogFile() -> String {
+        let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
+        let filePath = documentsPath + "/" + DATA_FILE_NAME
+        print("[TestingViewController] filepath: \(filePath)")
+        return filePath
+    }
+    
+    func openFileForWriting() -> FileHandle? {
+        let fileManager = FileManager.default
+        let created = fileManager.createFile(atPath: self.getPathToLogFile(), contents: nil, attributes: nil)
+        if !created {
+            assert(false, "Failed to create file at " + self.getPathToLogFile() + ".")
+        }
+        return FileHandle(forWritingAtPath: self.getPathToLogFile())
+    }
+    
+    func logLineToDataFile(_ line: String) {
+        self.logFile?.write(line.data(using: String.Encoding.utf8)!)
+        print(line)
+    }
+    
+    func resetLogFile() {
+        self.logFile?.closeFile()
+        self.logFile = self.openFileForWriting()
+        if self.logFile == nil {
+            assert(false, "Couldn't open file for writing (" + self.getPathToLogFile() + ").")
+        }
     }
     
     deinit {
