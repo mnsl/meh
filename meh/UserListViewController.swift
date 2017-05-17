@@ -9,6 +9,21 @@
 import Foundation
 import UIKit
 
+struct UserEntry : Hashable {
+    let user : User
+    var unreadMessages : Bool
+    var hopCount : Int?
+    
+    // conform to Hashable protocol
+    var hashValue: Int {
+        return "\(user),\(unreadMessages),\(hopCount)".hashValue
+    }
+    
+    static func == (lhs: UserEntry, rhs: UserEntry) -> Bool {
+        return lhs.hashValue == rhs.hashValue
+    }
+}
+
 class UserListViewController: UIViewController, UITableViewDataSource, MessengerModelDelegate, UITableViewDelegate {
     @IBOutlet weak var tableView: UITableView!
     @IBOutlet weak var startchat: UIButton!
@@ -19,6 +34,8 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     public static var onlineUsersArray: Array<User> = []
     public static var selectedUser: User? = nil
     var selectedIndex : IndexPath? = nil
+    
+    public static var userEntries = [String: UserEntry]() // username : UserEntry
     
     // MARK: - UITableViewDataSource
     
@@ -31,8 +48,6 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
             print("[UserListViewController] has no user selected!")
         }
     }
-    
-    
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -57,9 +72,54 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
         return UserListViewController.onlineUsersArray.count
     }
     
+    func userEntryToString(userEntry : UserEntry) -> String {
+        var str = ""
+        if userEntry.unreadMessages {
+            str = "✉️ "
+        } else {
+            str = "   "
+        }
+        
+        str += "\(userEntry.user.name) "
+        
+        if userEntry.hopCount == nil {
+            str += "[no known path to user]"
+        } else {
+            str += "[\(userEntry.hopCount!) hops to user]"
+        }
+        return str
+    }
+    
+    func userEntryAtIndex(indexPath: IndexPath) -> UserEntry? {
+        let sortedUsernames = UserListViewController.userEntries.keys.sorted()
+        if sortedUsernames.count < indexPath.row - 1 {
+            print("indexPath out of range")
+            return nil
+        }
+        let usernameForIndex = sortedUsernames[indexPath.row]
+        
+        if let userEntry = UserListViewController.userEntries[usernameForIndex] {
+            return userEntry
+        } else {
+            print("no user entry for username at index \(indexPath.row)")
+            return nil
+        }
+    }
+    
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "UITableViewCell", for: indexPath)
         cell.selectionStyle = .none // to prevent cells from being "highlighted"
+        
+        if let userEntry = userEntryAtIndex(indexPath: indexPath) {
+            cell.textLabel?.text = userEntryToString(userEntry: userEntry)
+        } else {
+            print("no user entry for username at index \(indexPath.row)")
+            cell.textLabel?.text = "[invalid]"
+        }
+        return cell
+        
+        /*
+        
         print("selected user \(UserListViewController.onlineUsersArray[indexPath.row].name)")
         let username = UserListViewController.onlineUsersArray[indexPath.row].name
         print("current self metadata: \(MessengerModel.shared.metadata)")
@@ -74,6 +134,7 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
         }
         
         return cell
+         */
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
@@ -85,13 +146,26 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
                 tableView.cellForRow(at: IndexPath(row: i, section: 0))?.accessoryType = .none
             }
         }
+        UserListViewController.selectedUser = userEntryAtIndex(indexPath: indexPath)?.user
+        // turn off unread message icon if there
+        if UserListViewController.selectedUser == nil { return }
+        let username = UserListViewController.selectedUser!.name
+        if let oldEntry = UserListViewController.userEntries[username] {
+            let newEntry = UserEntry(user: UserListViewController.selectedUser!, unreadMessages: false, hopCount: oldEntry.hopCount)
+            UserListViewController.userEntries[username] = newEntry
+            tableView.reloadData()
+        }
         
-        let selectedUser = UserListViewController.onlineUsersArray[indexPath.row]
-        UserListViewController.selectedUser = selectedUser
         if selectedIndex != nil {
             tableView.cellForRow(at: selectedIndex!)?.accessoryType = .none
         }
         selectedIndex = indexPath
+        
+        
+        /*
+        let selectedUser = UserListViewController.onlineUsersArray[indexPath.row]
+        UserListViewController.selectedUser = selectedUser
+        */
     }
     
     func tableView(_ tableView: UITableView, didDeselectRowAt indexPath: IndexPath) {
@@ -112,12 +186,48 @@ class UserListViewController: UIViewController, UITableViewDataSource, Messenger
     func didReceiveMessage(msg: UserMessage?) {
         // TODO: bold the text of the user in the userlist
         // Maintain state of what messages have been unread?
-        return
+        if msg == nil { return }
+        if let oldEntry : UserEntry = UserListViewController.userEntries[msg!.origin] {
+            let newEntry = UserEntry(user: oldEntry.user, unreadMessages: true, hopCount: oldEntry.hopCount)
+            UserListViewController.userEntries[msg!.origin] = newEntry
+        }
+        tableView.reloadData()
     }
 
     func didUpdateUsers() {
         print("[UserListViewController] updated users")
         UserListViewController.onlineUsersArray = Array(MessengerModel.shared.users.values)
+        
+        let hopCounts = MessengerModel.getHopCounts(metadata: MessengerModel.shared.metadata)
+        
+        for (username, user) in MessengerModel.shared.users {
+            let hopCount : Int? = hopCounts[username]
+            if let oldEntry = UserListViewController.userEntries[username] {
+                let newEntry = UserEntry(user: user, unreadMessages: oldEntry.unreadMessages, hopCount: hopCount)
+                UserListViewController.userEntries[username] = newEntry
+            } else {
+                print("adding user \(username) to userEntries")
+                let userEntry = UserEntry(user: user, unreadMessages: false, hopCount: hopCount)
+                UserListViewController.userEntries[username] = userEntry
+            }
+        }
+        /*
+        for (username, hopCount) in hopCounts {
+            if let user : User = MessengerModel.shared.users[username] {
+                if let oldEntry = UserListViewController.userEntries[username] {
+                    let newEntry = UserEntry(user: user, unreadMessages: oldEntry.unreadMessages, hopCount: hopCount)
+                    UserListViewController.userEntries[username] = newEntry
+                } else {
+                    print("adding user \(username) to userEntries")
+                    let userEntry = UserEntry(user: user, unreadMessages: false, hopCount: hopCount)
+                    UserListViewController.userEntries[username] = userEntry
+                }
+            } else {
+                print("unknown user \(username) in hopCounts...")
+            }
+        }
+        */
+
         tableView.reloadData()
     }
     

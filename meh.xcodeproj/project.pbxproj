@@ -456,7 +456,7 @@
 				DEVELOPMENT_TEAM = JGU2252VSF;
 				INFOPLIST_FILE = meh/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = proj.s062.mehh;
+				PRODUCT_BUNDLE_IDENTIFIER = project.s062.meh123456;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 3.0;
 			};
@@ -469,7 +469,7 @@
 				DEVELOPMENT_TEAM = JGU2252VSF;
 				INFOPLIST_FILE = meh/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = proj.s062.mehh;
+				PRODUCT_BUNDLE_IDENTIFIER = project.s062.meh123456;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 3.0;
 			};

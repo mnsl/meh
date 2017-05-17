@@ -107,6 +107,8 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         if user!.name == chatMembers.title! {
             if MessengerModel.shared.chats[user!] == nil { return }
             loadMessages(messages: MessengerModel.shared.chats[user!]!)
+        } else {
+            print("sent message to different user \(msg!.recipient)")
         }
 
         
@@ -120,8 +122,8 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
         } else {
             MessengerModel.shared.chats[user!] = [msg!]
         }
-         */
         loadMessages(messages: MessengerModel.shared.chats[user!]!)
+         */
     }
     
     func didReceiveMessage(msg: UserMessage?) {
