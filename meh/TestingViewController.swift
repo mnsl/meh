@@ -8,6 +8,7 @@
 
 import Foundation
 import UIKit
+import MessageUI
 
 struct LogEntry {
     let recipient : String
@@ -17,11 +18,14 @@ struct LogEntry {
     var avgLatency : Double?
 }
 
-class TestingViewController: UIViewController, UITableViewDataSource, MessengerModelDelegate, UITableViewDelegate {
+class TestingViewController: UIViewController, UITableViewDataSource, MessengerModelDelegate, UITableViewDelegate, MFMailComposeViewControllerDelegate {
     @IBOutlet weak var tableView: UITableView!
 
     let DATA_FILE_NAME = "log.csv"
     var logFile:FileHandle? = nil
+    var logs = [String: LogEntry]() // username: log entry
+    let hopCounts = MessengerModel.getHopCounts(metadata: MessengerModel.shared.metadata)
+    var alert:UIAlertController? = nil
 
     @IBAction func testDirectPeers() {
         print("[Testing] testDirectPeers")
@@ -33,6 +37,7 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
             for i in 0..<100 {
                 MessengerModel.shared.sendMessage(message: "test\(i)", recipient: username)
             }
+
         }
     }
     
@@ -189,7 +194,7 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
         if oldEntry == nil {
             // TODO: create a new entry if need be.
             print("UH OH! Missing entry for \(msg.recipient)...could not update entry.")
-        }
+        } else {
         
         // Calculate average latency
         let oldAckCount : Double = Double((oldEntry?.acks)!)
@@ -204,9 +209,10 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
         
         // write data to csv file
         //  battery level is a float that ranges from 0 to 1.0, or is -1.0 if info not available.)
-        let dataToLog = "\(msg.recipient),\(logs[msg.recipient]?.hops),\(logs[msg.recipient]?.pingsSent),\(logs[msg.recipient]?.acks),\(logs[msg.recipient]!.avgLatency!),\(UIDevice.current.batteryLevel)\n"
+        let dataToLog = "\(msg.recipient),\(logs[msg.recipient]!.hops),\(logs[msg.recipient]!.pingsSent),\(logs[msg.recipient]!.acks),\(logs[msg.recipient]!.avgLatency!),\(UIDevice.current.batteryLevel)\n"
         self.logLineToDataFile(dataToLog)
         print("logged data: \(dataToLog)")
+        }
 
     }
 }
