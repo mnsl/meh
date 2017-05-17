@@ -106,6 +106,20 @@ with open('log.csv', 'rb') as csvfile:
     # Get map of user to hop count
     print(get_hop_counts(entry_list))
 
+    # Get rate of battery loss (per message, and per second)    
+    d_battery = entry_list[0].battery_level - entry_list[-1].battery_level
+    num_messages = len(entry_list)
+    d_battery_per_message = float(d_battery)/num_messages
+
+    num_messages_per_hop_count = {hop_count: len(entry_list) for hop_count, entry_list in hop_dict.items()}
+    # total time sending messages
+    num_seconds = sum([hop_to_avg[hop_count]*num_messages_per_hop_count[hop_count] for hop_count in hop_dict])
+    d_battery_per_minute = float(d_battery)/num_seconds/60
+
+    print('d_battery_per_message', d_battery_per_message)
+    print('d_battery_per_minute', d_battery_per_minute)
+
+
 
 
     
