@@ -14,7 +14,7 @@ struct LogEntry {
     let hops : Int
     var pingsSent : Int
     var acks : Int
-    var avgLatency : Int?
+    var avgLatency : Double?
 }
 
 class TestingViewController: UIViewController, UITableViewDataSource, MessengerModelDelegate, UITableViewDelegate {
@@ -61,7 +61,15 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
             logs[username] = logEntry
             
         }
+        // battery logging setup
+        UIDevice.current.isBatteryMonitoringEnabled = true
         
+        // log file setup
+        self.logFile = self.openFileForWriting()
+        if self.logFile == nil {
+            assert(false, "Couldn't open file for writing (" + self.getPathToLogFile() + ").")
+        }
+        self.logLineToDataFile("recipient,hops,pingsSent,acks,avgLatency,batteryLevel\n")
         
         // Set this view controller to be the delegate of MessengerModel that keeps track of the messages being sent between you and others on the network.
         MessengerModel.shared.delegates.append(self)
@@ -106,6 +114,10 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
         return self.logs.count
     }
     
+    // MARK: Test methods
+    
+    // TODO(test indirect peers)
+
     // MARK: MessengerModelDelegate methods
     func didSendMessage(msg: UserMessage?) {
         print("[TestingViewController] didSendMessage(msg: \(msg)")
@@ -113,7 +125,13 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
             return
         }
         let oldEntry = logs[msg!.recipient]
-        // TODO
+        // TODO: every time a message is sent we want to calculate and update the evaluation metrics.
+        // increment # of pings sent in entry
+        // set current battery level
+        
+        // TODO(quacht): define a new entry that replaces the old one based on this message
+        logs[(msg?.recipient)!]?.pingsSent = (oldEntry?.pingsSent)! + 1
+        tableView.reloadData()
     }
     
     func didReceiveMessage(msg: UserMessage?) {
@@ -133,5 +151,29 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
     
     func didReceiveAck(for msg: UserMessage, latency: TimeInterval) {
         print("[TestingViewController] didReceiveAck(for: \(msg)")
+        let oldEntry = logs[msg.recipient]
+        
+        if oldEntry == nil {
+            // TODO: create a new entry if need be.
+            print("UH OH! Missing entry for \(msg.recipient)...could not update entry.")
+        }
+        
+        // Calculate average latency
+        let oldAckCount : Double = Double((oldEntry?.acks)!)
+        if oldEntry?.avgLatency == nil {
+            logs[msg.recipient]?.avgLatency = latency
+        } else {
+            var oldTotalLatency : Double = (oldEntry?.avgLatency!)!*oldAckCount
+            logs[msg.recipient]?.avgLatency = (oldTotalLatency + latency)/(oldAckCount + 1.0)
+        }
+        logs[msg.recipient]?.acks += 1
+        tableView.reloadData()
+        
+        // write data to csv file
+        //  battery level is a float that ranges from 0 to 1.0, or is -1.0 if info not available.)
+        let dataToLog = "\(msg.recipient),\(logs[msg.recipient]?.hops),\(logs[msg.recipient]?.pingsSent),\(logs[msg.recipient]?.acks),\(logs[msg.recipient]!.avgLatency!),\(UIDevice.current.batteryLevel)\n"
+        self.logLineToDataFile(dataToLog)
+        print("logged data: \(dataToLog)")
+
     }
 }
