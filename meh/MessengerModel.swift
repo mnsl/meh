@@ -301,34 +301,33 @@ class MessengerModel : BLEDelegate {
     func sendMessage(message: UserMessage, exclude: String?) {
         let messageData = messageToJSONData(message: message)
         
-        let recipientUUID = self.users[message.recipient]?.uuid
+        // do not reforward this message
+        self.doNotForward.update(with: message)
+        
+        // add this message to the chat history
+        let recipientUser = self.users[message.recipient]
+        if recipientUser == nil {
+            print("tried to send a message to an unknown user :(")
+            return
+        }
+        if self.chats[recipientUser!] != nil {
+            self.chats[recipientUser!]!.append(message)
+        } else {
+            self.chats[recipientUser!] = [message]
+        }
+        
+        // tell ChatViewController to update view of messages.
+        for delegate in self.delegates {
+            delegate.didSendMessage(msg: message)
+        }
 
+        let recipientUUID = self.users[message.recipient]?.uuid
         // Check to see if the recipient is connected a central or peripheral node
         if (recipientUUID != nil && ble?.connectedPeripherals[recipientUUID!] != nil) {
             // Write to the peripheral's inbox characteristic
             let success = writeToInbox(data: messageData!, username: message.recipient)
             if success {
                 print("successfully wrote to inbox of message recipient \(message.recipient), who happened to be directly connected as a peripheral")
-                
-                // do not reforward this message
-                self.doNotForward.update(with: message)
-                
-                // add this message to the chat history
-                let recipientUser = self.users[message.recipient]
-                if recipientUser == nil {
-                    print("that's weird, recipientUser shouldn't be nil :(")
-                    return
-                }
-                if self.chats[recipientUser!] != nil {
-                   self.chats[recipientUser!]!.append(message)
-                } else {
-                   self.chats[recipientUser!] = [message]
-                }
-                
-                // tell ChatViewController to update view of messages.
-                for delegate in self.delegates {
-                    delegate.didSendMessage(msg: message)
-                }
                 
             } else {
                 print("failed to write to inbox of message recipient, even though they were directly connected as a peripheral")
@@ -530,20 +529,24 @@ class MessengerModel : BLEDelegate {
             if userMessage.recipient == self.metadata.username {
                 print("message received was intended for this user")
 
+                // Send an ACK back to the origin node
                 let ack = ACK(originalMessageOrigin: userMessage.origin, originalMessageRecipient: userMessage.recipient, originalMessageHash: userMessage.hashValue)
                 sendACK(ack: ack, exclude: nil)
                 
-                let origin = self.users[userMessage.origin]
-                if origin == nil {
-                    print("that's weird, origin shouldn't be nil :(")
-                    return
+                // Add the message to the chat history for the user who sent it to us
+                var originUser : User? = self.users[userMessage.origin]
+                if originUser == nil {
+                    print("received message from unknown user; adding them to users list")
+                    originUser = User(uuid: nil, name: userMessage.origin)
+                    self.users[userMessage.origin] = originUser
                 }
-                if self.chats[origin!] != nil {
-                    self.chats[origin!]!.append(userMessage)
+                if self.chats[originUser!] != nil {
+                    self.chats[originUser!]!.append(userMessage)
                 } else {
-                    self.chats[origin!] = [userMessage]
+                    self.chats[originUser!] = [userMessage]
                 }
                 
+                // Tell the delegates the chat history for this user has been updated
                 for delegate in delegates {
                     delegate.didReceiveMessage(msg: userMessage)
                 }
@@ -584,13 +587,11 @@ class MessengerModel : BLEDelegate {
                     }
                     
                     if let index = MessengerModel.shared.chats[user!]!.index(of: msg) {
+                        print("chats[UserListViewController.selectedUser!]! was:\n\t \(self.chats[user!]!)")
+
                         self.chats[user!]![index] = UserMessage(content: msg.content + " ☑︎", origin: msg.origin, date: msg.date, recipient: msg.recipient)
                         
-                        //print("chats[UserListViewController.selectedUser!]! was:\n\t \(self.chats[user!]!)")
-                        
-                        MessengerModel.shared.chats[user!]![index] = msg
-                        
-                        //print("chats[UserListViewController.selectedUser!]! is now:\n\t \(self.chats[user!]!)")
+                        print("chats[UserListViewController.selectedUser!]! is now:\n\t \(self.chats[user!]!)")
                         
                         for delegate in self.delegates {
                             delegate.didReceiveAck(for: msg, latency: latency)
@@ -617,9 +618,9 @@ class MessengerModel : BLEDelegate {
             let metadata = message as! Metadata
             print("didReceiveMessage() received metadata from \(sender): \(metadata)")
     
-            if metadata.username != sender {
-                print("sender \(sender) did not match metadata name \(metadata.username)")
-            }
+            // If it's metadata, 'sender' is a UUID string corresponding to the central who sent it
+            let newUser = User(uuid: UUID(uuidString: sender), name: metadata.username)
+            self.users[metadata.username] = newUser
             
             // update the peripheral's list of neighbors in our peerMap
             // this works for two hops.
@@ -698,7 +699,6 @@ class MessengerModel : BLEDelegate {
     }
     
     func outboxToJSONData(outbox: [UserMessage]) -> Data? {
-        print("outboxToJSONData not implemented")
         if let json = Outbox(messages: outbox).toJSON() {
             return json.data(using: .utf8)
         } else {
