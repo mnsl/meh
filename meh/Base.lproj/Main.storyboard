@@ -185,12 +185,12 @@
                                     <action selector="testDirectPeers" destination="BSQ-U0-yjB" eventType="touchUpInside" id="9lg-62-lfW"/>
                                 </connections>
                             </button>
-                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="1oG-yj-dBp">
-                                <rect key="frame" x="113" y="517" width="95" height="30"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMinY="YES"/>
-                                <state key="normal" title="Ping All Users"/>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="P39-JT-Y2f">
+                                <rect key="frame" x="113" y="518" width="94" height="30"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Email Log File"/>
                                 <connections>
-                                    <action selector="pingAllUsers" destination="BSQ-U0-yjB" eventType="touchUpInside" id="rqb-Nc-fIA"/>
+                                    <action selector="emailLogFile:" destination="BSQ-U0-yjB" eventType="touchUpInside" id="J78-oP-cgT"/>
                                 </connections>
                             </button>
                         </subviews>

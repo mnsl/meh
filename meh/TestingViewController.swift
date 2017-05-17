@@ -51,9 +51,6 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
         }
     }
     
-    var logs = [String: LogEntry]() // username: log entry
-    let hopCounts = MessengerModel.getHopCounts(metadata: MessengerModel.shared.metadata)
-    
     override func viewDidLoad() {
         super.viewDidLoad()
         
