@@ -19,6 +19,8 @@ struct LogEntry {
 
 class TestingViewController: UIViewController, UITableViewDataSource, MessengerModelDelegate, UITableViewDelegate {
     @IBOutlet weak var tableView: UITableView!
+    let DATA_FILE_NAME = "log.csv"
+    var logFile:FileHandle? = nil
     
     var logs = [String: LogEntry]() // username: log entry
     let hopCounts = MessengerModel.getHopCounts(metadata: MessengerModel.shared.metadata)
@@ -33,15 +35,52 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
         
         for (username, hops) in hopCounts {
             let logEntry = LogEntry(recipient: username, hops: hops, pingsSent: 0, acks: 0, avgLatency: nil)
+            logs[username] = logEntry
             
         }
+        // battery logging setup
+        UIDevice.current.isBatteryMonitoringEnabled = true
         
+        // log file setup
+        self.logFile = self.openFileForWriting()
+        if self.logFile == nil {
+            assert(false, "Couldn't open file for writing (" + self.getPathToLogFile() + ").")
+        }
+        self.logLineToDataFile("recipient,hops,pingsSent,acks,avgLatency,batteryLevel\n")
         
         // Set this view controller to be the delegate of MessengerModel that keeps track of the messages being sent between you and others on the network.
         MessengerModel.shared.delegates.append(self)
-        
         testDirectPeers()
 
+    }
+    
+    
+    func getPathToLogFile() -> String {
+        let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
+        let filePath = documentsPath + "/" + DATA_FILE_NAME
+        return filePath
+    }
+    
+    func openFileForWriting() -> FileHandle? {
+        let fileManager = FileManager.default
+        let created = fileManager.createFile(atPath: self.getPathToLogFile(), contents: nil, attributes: nil)
+        if !created {
+            assert(false, "Failed to create file at " + self.getPathToLogFile() + ".")
+        }
+        return FileHandle(forWritingAtPath: self.getPathToLogFile())
+    }
+    
+    func logLineToDataFile(_ line: String) {
+        self.logFile?.write(line.data(using: String.Encoding.utf8)!)
+        print(line)
+    }
+    
+    func resetLogFile() {
+        self.logFile?.closeFile()
+        self.logFile = self.openFileForWriting()
+        if self.logFile == nil {
+            assert(false, "Couldn't open file for writing (" + self.getPathToLogFile() + ").")
+        }
     }
     
     deinit {
@@ -93,6 +132,8 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
         }
     }
     
+    // TODO(test inDirect peers)
+    
     // MARK: MessengerModelDelegate methods
     func didSendMessage(msg: UserMessage?) {
         print("[TestingViewController] didSendMessage(msg: \(msg)")
@@ -100,7 +141,14 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
             return
         }
         let oldEntry = logs[msg!.recipient]
-        // TODO
+        // TODO: every time a message is sent we want to calculate and update the evaluation metrics.
+        // increment # of pings sent in entry
+        // set current battery level
+        
+        // TODO(quacht): define a new entry that replaces the old one based on this message
+        logs[(msg?.recipient)!]?.pingsSent = (oldEntry?.pingsSent)! + 1
+
+        self.logLineToDataFile("recipient,hops,pingsSent,acks,avgLatency,batteryLevel\n")
     }
     
     func didReceiveMessage(msg: UserMessage?) {
@@ -120,5 +168,18 @@ class TestingViewController: UIViewController, UITableViewDataSource, MessengerM
     
     func didReceiveAck(for msg: UserMessage, latency: TimeInterval) {
         print("[TestingViewController] didReceiveAck(for: \(msg)")
+        let oldEntry = logs[msg.recipient]
+        // average latency is
+        if oldEntry == nil {
+            // TODO: create a new entry if need be.
+            print("UH OH! Missing entry for \(msg.recipient)...could not update entry.")
+        }
+        logs[msg.recipient]?.avgLatency = (oldEntry?.avgLatency*oldEntry?.acks + latency)/(oldEntry?.acks + 1)
+        logs[msg.recipient]?.acks += 1
+        
+        // write data to csv file
+        //  battery level is a float that ranges from 0 to 1.0, or is -1.0 if info not available.)
+        self.logLineToDataFile("\(msg.recipient),\(logs[msg.recipient]?.hops),\(logs[msg.recipient]?.pingsSent),\(logs[msg.recipient]?.acks),\(logs[msg.recipient]?.avgLatency),\(UIDevice.current.batteryLevel)\n")
+
     }
 }

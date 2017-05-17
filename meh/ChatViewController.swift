@@ -109,13 +109,18 @@ class ChatViewController: UIViewController, MessengerModelDelegate {
     func didReceiveMessage(msg: UserMessage?) {
         print("[ChatViewController] didReceiveMessage(msg: \(msg)")
         if msg != nil {
-            if MessengerModel.shared.chats[UserListViewController.selectedUser!] != nil {
+            
+            if UserListViewController.selectedUser != nil {
+            if  MessengerModel.shared.chats[UserListViewController.selectedUser!] != nil {
                 MessengerModel.shared.chats[UserListViewController.selectedUser!]!.append(msg!)
             } else {
                 MessengerModel.shared.chats[UserListViewController.selectedUser!] = [msg!]
             }
             // addMessageToDisplay(message: msg!)
             loadMessages(messages: MessengerModel.shared.chats[UserListViewController.selectedUser!]!)
+            } else {
+                print("That's weird! UserListViewController.selectedUser is nil! Not going to display received message.")
+            }
         } else {
             print("Sent message is nil! --> not going to display in chat.")
         }
